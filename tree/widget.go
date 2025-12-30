@@ -1,8 +1,8 @@
 package tree
 
 import (
-	"cheesecake/widget"
 	"context"
+	"github.com/calmdaysamuel/cheesecake/widget"
 	"reflect"
 )
 

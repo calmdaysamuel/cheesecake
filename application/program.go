@@ -1,11 +1,11 @@
 package application
 
 import (
-	"cheesecake/constraints"
-	"cheesecake/tree"
-	"cheesecake/widget"
-	"cheesecake/widgets/focus"
 	"context"
+	"github.com/calmdaysamuel/cheesecake/constraints"
+	"github.com/calmdaysamuel/cheesecake/tree"
+	"github.com/calmdaysamuel/cheesecake/widget"
+	"github.com/calmdaysamuel/cheesecake/widgets/focus"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"slices"

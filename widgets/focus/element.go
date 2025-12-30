@@ -1,7 +1,7 @@
 package focus
 
 import (
-	"cheesecake/widget"
+	"github.com/calmdaysamuel/cheesecake/widget"
 	tea "github.com/charmbracelet/bubbletea"
 )
 

@@ -1,9 +1,9 @@
 package layoutbuilder
 
 import (
-	"cheesecake/constraints"
-	"cheesecake/random"
-	"cheesecake/widget"
+	"github.com/calmdaysamuel/cheesecake/constraints"
+	"github.com/calmdaysamuel/cheesecake/random"
+	"github.com/calmdaysamuel/cheesecake/widget"
 )
 
 var _ widget.RenderWidget = &Model{}

@@ -1,11 +1,11 @@
 package main
 
 import (
-	"cheesecake/application"
-	"cheesecake/widget"
-	"cheesecake/widgets/column"
 	"context"
 	"fmt"
+	"github.com/calmdaysamuel/cheesecake/application"
+	"github.com/calmdaysamuel/cheesecake/widget"
+	"github.com/calmdaysamuel/cheesecake/widgets/column"
 	tea "github.com/charmbracelet/bubbletea"
 )
 

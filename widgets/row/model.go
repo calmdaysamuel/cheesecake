@@ -1,7 +1,7 @@
 package row
 
 import (
-	"cheesecake/widget"
+	"github.com/calmdaysamuel/cheesecake/widget"
 	"github.com/charmbracelet/lipgloss"
 )
 

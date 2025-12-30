@@ -1,10 +1,10 @@
 package container
 
 import (
-	"cheesecake/canvas"
-	"cheesecake/constraints"
-	"cheesecake/size"
-	"cheesecake/widget"
+	"github.com/calmdaysamuel/cheesecake/canvas"
+	"github.com/calmdaysamuel/cheesecake/constraints"
+	"github.com/calmdaysamuel/cheesecake/size"
+	"github.com/calmdaysamuel/cheesecake/widget"
 )
 
 var _ widget.RenderElement = &Element{}

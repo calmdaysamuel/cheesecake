@@ -1,8 +1,8 @@
 package preferred
 
 import (
-	"cheesecake/random"
-	"cheesecake/widget"
+	"github.com/calmdaysamuel/cheesecake/random"
+	"github.com/calmdaysamuel/cheesecake/widget"
 )
 
 var _ widget.RenderWidget = &Model{}

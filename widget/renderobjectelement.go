@@ -1,9 +1,9 @@
 package widget
 
 import (
-	"cheesecake/canvas"
-	"cheesecake/constraints"
-	"cheesecake/size"
+	"github.com/calmdaysamuel/cheesecake/canvas"
+	"github.com/calmdaysamuel/cheesecake/constraints"
+	"github.com/calmdaysamuel/cheesecake/size"
 )
 
 type RenderElement interface {

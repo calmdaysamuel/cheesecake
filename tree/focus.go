@@ -1,8 +1,8 @@
 package tree
 
 import (
-	"cheesecake/widgets/focus"
 	"context"
+	"github.com/calmdaysamuel/cheesecake/widgets/focus"
 )
 
 func Focus(ctx context.Context, root *Node) []*focus.Element {

@@ -1,8 +1,8 @@
 package container
 
 import (
-	"cheesecake/random"
-	"cheesecake/widget"
+	"github.com/calmdaysamuel/cheesecake/random"
+	"github.com/calmdaysamuel/cheesecake/widget"
 	"github.com/charmbracelet/lipgloss"
 )
 

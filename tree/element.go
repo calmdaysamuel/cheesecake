@@ -1,7 +1,7 @@
 package tree
 
 import (
-	"cheesecake/widget"
+	"github.com/calmdaysamuel/cheesecake/widget"
 )
 
 func RootRenderObject(root *Node) widget.RenderElement {

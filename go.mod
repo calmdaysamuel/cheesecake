@@ -1,4 +1,4 @@
-module cheesecake
+module github.com/calmdaysamuel/cheesecake
 
 go 1.24.0
 

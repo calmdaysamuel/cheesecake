@@ -1,6 +1,6 @@
 package widget
 
-import "cheesecake/random"
+import "github.com/calmdaysamuel/cheesecake/random"
 
 type StatefulElement interface {
 	Element
