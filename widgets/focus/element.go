@@ -5,44 +5,45 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-var _ widget.StatefulElement = &Element{}
+var _ widget.Element = &Element{}
 
-type State struct {
-	InFocus     bool
+type Element struct {
+	HasFocus    bool
 	OnFocusGain func()
 	OnKeyPress  func(key tea.KeyMsg)
 	OnFocusLoss func()
-}
-type Element struct {
-	*widget.StatefulElementImpl[State]
+	ID          string
 }
 
+func (e *Element) Init() {
+}
+
+func (e *Element) Identifier() string {
+	return e.ID
+}
+
+func (e *Element) Dispose() {}
+
 func (e *Element) LoseFocus() {
-	e.SetState(func(oldState State) State {
-		oldState.InFocus = false
-		if oldState.OnFocusLoss != nil {
-			oldState.OnFocusLoss()
-		}
-		return oldState
-	})
+	e.HasFocus = false
+	if e.OnFocusLoss != nil {
+		e.OnFocusLoss()
+	}
 }
 
 func (e *Element) GainLocus() {
-	e.SetState(func(oldState State) State {
-		oldState.InFocus = true
-		if oldState.OnFocusGain != nil {
-			oldState.OnFocusGain()
-		}
-		return oldState
-	})
+	e.HasFocus = true
+	if e.OnFocusGain != nil {
+		e.OnFocusGain()
+	}
 }
 
 func (e *Element) OnKeyPressEvent(msg tea.KeyMsg) {
-	if e.Current().OnKeyPress != nil {
-		e.Current().OnKeyPress(msg)
+	if e.OnKeyPress != nil {
+		e.OnKeyPress(msg)
 	}
 }
 
 func (e *Element) InFocus() bool {
-	return e.Current().InFocus
+	return e.HasFocus
 }

@@ -1,12 +1,14 @@
 package text
 
 import (
+	"strings"
+
 	"github.com/calmdaysamuel/cheesecake/canvas"
 	"github.com/calmdaysamuel/cheesecake/constraints"
+	"github.com/calmdaysamuel/cheesecake/mouseactions"
 	"github.com/calmdaysamuel/cheesecake/size"
 	"github.com/calmdaysamuel/cheesecake/widget"
 	"github.com/charmbracelet/lipgloss"
-	"strings"
 )
 
 var _ widget.RenderElement = &Element{}
@@ -16,9 +18,9 @@ type Element struct {
 	renderObjectChildren []widget.RenderElement
 	constraints.Constraints
 	size.Size
-	renderText string
-	ID         string
-	canvas     canvas.Canvas
+	ID     string
+	canvas canvas.Canvas
+	mouseactions.Manager
 }
 
 func (e *Element) Dispose() {}
@@ -32,36 +34,46 @@ func (e *Element) SetConstraints(constraints constraints.Constraints) {
 	e.MaxWidth = max(e.MaxWidth, 0)
 	e.MaxHeight = max(e.MaxHeight, 0)
 	totalCanvas := make(canvas.Canvas, 0)
+	charIdx := 0
 	for _, s := range strings.Split(e.parentWidget.Text, "\n") {
 		cells := make([]canvas.Cell, 0)
 		for _, char := range s {
 			cell := canvas.Cell{
 				Runes: []rune{char},
 			}
-			if lip, ok := e.parentWidget.Style.GetBackground().(lipgloss.Color); ok {
+			style := e.parentWidget.Style
+			if e.parentWidget.StyleFunc != nil {
+				cellStyle := e.parentWidget.StyleFunc(charIdx, char)
+				if cellStyle != nil {
+					style = *cellStyle
+				}
+			}
+			if lip, ok := style.GetBackground().(lipgloss.Color); ok {
 				cell.BgColor = lip
 			}
-			if lip, ok := e.parentWidget.Style.GetForeground().(lipgloss.Color); ok {
+			if lip, ok := style.GetForeground().(lipgloss.Color); ok {
 				cell.FgColor = lip
 			}
-			cell.Bold = e.parentWidget.Style.GetBold()
-			cell.Faint = e.parentWidget.Style.GetFaint()
-			cell.Italic = e.parentWidget.Style.GetItalic()
-			cell.Underline = e.parentWidget.Style.GetUnderline()
-			cell.UnderlineSpaces = e.parentWidget.Style.GetUnderlineSpaces()
+			cell.Bold = style.GetBold()
+			cell.Faint = style.GetFaint()
+			cell.Italic = style.GetItalic()
+			cell.Underline = style.GetUnderline()
+			cell.UnderlineSpaces = style.GetUnderlineSpaces()
 			cells = append(cells, cell)
-
+			charIdx++
 		}
 
 		c := canvas.Partition(cells, e.MaxWidth)
 		c = canvas.MergeTopLeft(c)
 		totalCanvas = append(totalCanvas, c...)
 	}
+	totalCanvas.AddMouseActionManager(e.Manager)
 	e.canvas = totalCanvas
 	e.Width, e.Height = canvas.Size(e.canvas)
 }
 
 func (e *Element) View() canvas.Canvas {
+
 	return e.canvas
 }
 

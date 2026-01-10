@@ -1,10 +1,12 @@
 package text
 
 import (
+	"strings"
+
+	"github.com/calmdaysamuel/cheesecake/mouseactions"
 	"github.com/calmdaysamuel/cheesecake/random"
 	"github.com/calmdaysamuel/cheesecake/widget"
 	"github.com/charmbracelet/lipgloss"
-	"strings"
 )
 
 var _ widget.RenderWidget = &Model{}
@@ -12,14 +14,17 @@ var _ widget.RenderWidget = &Model{}
 type Option func(*Model)
 
 type Model struct {
-	Text  string
-	Style lipgloss.Style
+	Text      string
+	Style     lipgloss.Style
+	StyleFunc func(idx int, char rune) *lipgloss.Style
+	mouseactions.Manager
 }
 
-func (m *Model) Element() widget.Element {
+func (m *Model) Element() widget.RenderElement {
 	return &Element{
 		parentWidget: m,
 		ID:           random.ID(),
+		Manager:      m.Manager,
 	}
 }
 
@@ -58,5 +63,16 @@ func Place(text string, width, height int, options ...Option) *Model {
 func WithTextStyle(s lipgloss.Style) Option {
 	return func(model *Model) {
 		model.Style = s
+	}
+}
+func WithTextStyleFunc(styleFunc func(idx int, char rune) *lipgloss.Style) Option {
+	return func(model *Model) {
+		model.StyleFunc = styleFunc
+	}
+}
+
+func WithMouseActions(m mouseactions.Manager) Option {
+	return func(model *Model) {
+		model.Manager = m
 	}
 }

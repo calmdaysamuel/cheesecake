@@ -1,6 +1,7 @@
 package container
 
 import (
+	"github.com/calmdaysamuel/cheesecake/mouseactions"
 	"github.com/calmdaysamuel/cheesecake/random"
 	"github.com/calmdaysamuel/cheesecake/widget"
 	"github.com/charmbracelet/lipgloss"
@@ -17,12 +18,14 @@ type Model struct {
 	BgColor             lipgloss.Color
 	VerticalAlignment   lipgloss.Position
 	HorizontalAlignment lipgloss.Position
+	mouseactions.Manager
 }
 
-func (m *Model) Element() widget.Element {
+func (m *Model) Element() widget.RenderElement {
 	return &Element{
-		parent: m,
-		ID:     random.ID(),
+		parent:  m,
+		ID:      random.ID(),
+		Manager: m.Manager,
 	}
 }
 
@@ -56,5 +59,11 @@ func WithVerticalAlignment(position lipgloss.Position) Option {
 func WithHorizontalAlignment(position lipgloss.Position) Option {
 	return func(model *Model) {
 		model.HorizontalAlignment = position
+	}
+}
+
+func WithMouseActions(m mouseactions.Manager) Option {
+	return func(model *Model) {
+		model.Manager = m
 	}
 }

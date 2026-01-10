@@ -2,8 +2,9 @@ package tree
 
 import (
 	"context"
-	"github.com/calmdaysamuel/cheesecake/widget"
 	"reflect"
+
+	"github.com/calmdaysamuel/cheesecake/widget"
 )
 
 type Node struct {
@@ -22,32 +23,31 @@ func Initialize(ctx context.Context, root *Node) {
 		if len(widgetQueue) > 0 {
 			widgetQueue = widgetQueue[1:]
 		}
+
 		switch w := current.W.(type) {
 		case widget.StatefulWidget:
-			initialized := false
 			if current.E == nil {
-				initialized = true
-				current.E = w.Element()
+				e := w.Element()
+				e.Init()
+				current.E = e
 			}
-			state := current.E.(widget.StatefulElement).GetState()
-			if state.Dirty() || initialized {
-				oldChildren := current.Children
-				newChildren := []widget.Widget{w.Build(ctx, state)}
-				current.Children = nil
-				for i, child := range newChildren {
-					current.Children = append(current.Children, &Node{
-						W: child,
-					})
-					if i < len(oldChildren) {
-						if _, isStateful := oldChildren[i].W.(widget.StatefulElement); isStateful && reflect.TypeOf(oldChildren[i].W) == reflect.TypeOf(current.Children[i].W) {
-							current.Children[i].E = oldChildren[i].E
-							current.Children[i].Children = oldChildren[i].Children
-						} else if oldChildren[i].E != nil {
-							oldChildren[i].E.Dispose()
+			oldChildren := current.Children
+			newChildren := []widget.Widget{w.Build(ctx, current.E.(widget.State))}
+			current.Children = nil
+			for i, child := range newChildren {
+				current.Children = append(current.Children, &Node{
+					W: child,
+				})
+				if i < len(oldChildren) {
+					current.Children[i].Children = oldChildren[i].Children
+					if _, isStateful := oldChildren[i].W.(widget.StatefulWidget); isStateful && reflect.TypeOf(oldChildren[i].W) == reflect.TypeOf(current.Children[i].W) {
+						current.Children[i].E = oldChildren[i].E
+					} else if oldChildren[i].E != nil {
+						if oc, isStateful := oldChildren[i].E.(widget.State); isStateful {
+							oc.Dispose()
 						}
 					}
 				}
-				state.Clean()
 			}
 		case widget.RenderWidget:
 			if current.E == nil {
@@ -60,11 +60,13 @@ func Initialize(ctx context.Context, root *Node) {
 					W: child,
 				})
 				if i < len(oldChildren) {
-					if reflect.TypeOf(oldChildren[i].W) == reflect.TypeOf(current.Children[i].W) {
+					current.Children[i].Children = oldChildren[i].Children
+					if _, isStateful := oldChildren[i].W.(widget.StatefulWidget); isStateful && reflect.TypeOf(oldChildren[i].W) == reflect.TypeOf(current.Children[i].W) {
 						current.Children[i].E = oldChildren[i].E
-						current.Children[i].Children = oldChildren[i].Children
 					} else if oldChildren[i].E != nil {
-						oldChildren[i].E.Dispose()
+						if oc, isStateful := oldChildren[i].E.(widget.State); isStateful {
+							oc.Dispose()
+						}
 					}
 				}
 			}

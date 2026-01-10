@@ -2,6 +2,7 @@ package tree
 
 import (
 	"context"
+
 	"github.com/calmdaysamuel/cheesecake/widgets/focus"
 )
 

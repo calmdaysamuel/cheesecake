@@ -1,6 +1,7 @@
 package column
 
 import (
+	"github.com/calmdaysamuel/cheesecake/mouseactions"
 	"github.com/calmdaysamuel/cheesecake/random"
 	"github.com/calmdaysamuel/cheesecake/widget"
 	"github.com/charmbracelet/lipgloss"
@@ -14,12 +15,14 @@ type Model struct {
 	Style             lipgloss.Style
 	Children          []widget.Widget
 	MainAxisAlignment lipgloss.Position
+	mouseactions.Manager
 }
 
-func (m *Model) Element() widget.Element {
+func (m *Model) Element() widget.RenderElement {
 	return &Element{
 		parentWidget: m,
 		ID:           random.ID(),
+		Manager:      m.Manager,
 	}
 }
 
@@ -36,5 +39,11 @@ func New(children []widget.Widget, options ...Option) *Model {
 func WithMainAxisAlignment(position lipgloss.Position) Option {
 	return func(model *Model) {
 		model.MainAxisAlignment = position
+	}
+}
+
+func WithMouseActions(m mouseactions.Manager) Option {
+	return func(model *Model) {
+		model.Manager = m
 	}
 }

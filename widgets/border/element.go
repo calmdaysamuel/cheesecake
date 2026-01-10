@@ -3,6 +3,7 @@ package border
 import (
 	"github.com/calmdaysamuel/cheesecake/canvas"
 	"github.com/calmdaysamuel/cheesecake/constraints"
+	"github.com/calmdaysamuel/cheesecake/mouseactions"
 	"github.com/calmdaysamuel/cheesecake/size"
 	"github.com/calmdaysamuel/cheesecake/widget"
 	"github.com/charmbracelet/lipgloss"
@@ -16,6 +17,7 @@ type Element struct {
 	parent       *Model
 	renderObject widget.RenderElement
 	ID           string
+	mouseactions.Manager
 }
 
 func (e *Element) Identifier() string {

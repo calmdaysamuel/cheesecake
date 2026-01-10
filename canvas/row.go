@@ -1,6 +1,8 @@
 package canvas
 
-import "strings"
+import (
+	"strings"
+)
 
 type Row []Cell
 

@@ -2,14 +2,16 @@ package application
 
 import (
 	"context"
+	"fmt"
+	"slices"
+	"time"
+
 	"github.com/calmdaysamuel/cheesecake/constraints"
 	"github.com/calmdaysamuel/cheesecake/tree"
 	"github.com/calmdaysamuel/cheesecake/widget"
 	"github.com/calmdaysamuel/cheesecake/widgets/focus"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"slices"
-	"time"
 )
 
 type FrameTick struct {
@@ -22,7 +24,6 @@ type Program struct {
 	Root             widget.Widget
 	Tree             *tree.Node
 	FrameRate        int64
-	time             int64
 	Ctx              context.Context
 	rootRenderObject widget.RenderElement
 	focusChain       []*focus.Element
@@ -47,7 +48,11 @@ func (p *Program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else if msg.String() == "shift+tab" {
 			p.BackwardFocus()
 
+		} else {
+			p.HandleKeyEvent(msg)
 		}
+	case tea.MouseMsg:
+		p.HandleClick(msg)
 	}
 	return p, nil
 }
@@ -119,6 +124,23 @@ func (p *Program) View() string {
 			Render("application is running but there is nothing to render")
 	}
 	return p.rootRenderObject.View().View()
+}
+
+func (p *Program) HandleKeyEvent(msg tea.KeyMsg) {
+	p.focusChain = tree.Focus(p.Ctx, p.Tree)
+	if len(p.focusChain) <= 0 {
+		return
+	}
+	found := slices.IndexFunc(p.focusChain, func(element *focus.Element) bool {
+		return element.InFocus()
+	})
+	if found >= 0 {
+		p.focusChain[found].OnKeyPressEvent(msg)
+	}
+}
+
+func (p *Program) HandleClick(msg tea.MouseMsg) {
+	fmt.Println("clicking")
 }
 
 func TickAtFrameRate(frameRate int64) tea.Cmd {

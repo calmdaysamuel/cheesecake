@@ -3,6 +3,7 @@ package alignment
 import (
 	"github.com/calmdaysamuel/cheesecake/canvas"
 	"github.com/calmdaysamuel/cheesecake/constraints"
+	"github.com/calmdaysamuel/cheesecake/mouseactions"
 	"github.com/calmdaysamuel/cheesecake/size"
 	"github.com/calmdaysamuel/cheesecake/widget"
 )
@@ -16,6 +17,7 @@ type Element struct {
 	parent       *Model
 	renderObject widget.RenderElement
 	ID           string
+	mouseactions.Manager
 }
 
 func (e *Element) Flex() (int, int) {
@@ -45,6 +47,7 @@ func (e *Element) DirectDescendants() []widget.Widget {
 
 func (e *Element) View() canvas.Canvas {
 	background := canvas.NewWithCell(e.Width, e.Height, canvas.DefaultCellWithBgColor(string(e.parent.BgColor)))
+	background.AddMouseActionManager(e.Manager)
 	if e.renderObject == nil {
 		return background
 	}

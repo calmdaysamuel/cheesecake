@@ -3,6 +3,7 @@ package container
 import (
 	"github.com/calmdaysamuel/cheesecake/canvas"
 	"github.com/calmdaysamuel/cheesecake/constraints"
+	"github.com/calmdaysamuel/cheesecake/mouseactions"
 	"github.com/calmdaysamuel/cheesecake/size"
 	"github.com/calmdaysamuel/cheesecake/widget"
 )
@@ -15,6 +16,7 @@ type Element struct {
 	parent       *Model
 	renderObject widget.RenderElement
 	ID           string
+	mouseactions.Manager
 }
 
 func (e *Element) Identifier() string {

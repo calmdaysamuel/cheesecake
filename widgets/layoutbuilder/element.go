@@ -1,7 +1,9 @@
 package layoutbuilder
 
 import (
+	"github.com/calmdaysamuel/cheesecake/canvas"
 	"github.com/calmdaysamuel/cheesecake/constraints"
+	"github.com/calmdaysamuel/cheesecake/mouseactions"
 	"github.com/calmdaysamuel/cheesecake/size"
 	"github.com/calmdaysamuel/cheesecake/widget"
 )
@@ -14,6 +16,7 @@ type Element struct {
 	child        widget.Widget
 	renderObject widget.RenderElement
 	ID           string
+	mouseactions.Manager
 }
 
 func (e *Element) Dispose() {
@@ -49,9 +52,9 @@ func (e *Element) DirectDescendants() []widget.Widget {
 	return nil
 }
 
-func (e *Element) View() string {
+func (e *Element) View() canvas.Canvas {
 	if e.renderObject == nil {
-		return ""
+		return canvas.New(0, 0)
 	}
 	return e.renderObject.View()
 }

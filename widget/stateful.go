@@ -6,5 +6,6 @@ import (
 
 type StatefulWidget interface {
 	Widget
+	Element() State
 	Build(ctx context.Context, element State) Widget
 }

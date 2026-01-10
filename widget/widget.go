@@ -1,5 +1,3 @@
 package widget
 
-type Widget interface {
-	Element() Element
-}
+type Widget interface{}

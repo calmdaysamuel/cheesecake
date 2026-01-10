@@ -3,6 +3,7 @@ package spacer
 import (
 	"github.com/calmdaysamuel/cheesecake/canvas"
 	"github.com/calmdaysamuel/cheesecake/constraints"
+	"github.com/calmdaysamuel/cheesecake/mouseactions"
 	"github.com/calmdaysamuel/cheesecake/size"
 	"github.com/calmdaysamuel/cheesecake/widget"
 )
@@ -15,6 +16,7 @@ type Element struct {
 	spacing canvas.Canvas
 	flex    int
 	size.Size
+	mouseactions.Manager
 }
 
 func (e *Element) Flex() (int, int) {

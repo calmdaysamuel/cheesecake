@@ -2,6 +2,8 @@ package focus
 
 import (
 	"context"
+
+	"github.com/calmdaysamuel/cheesecake/random"
 	"github.com/calmdaysamuel/cheesecake/widget"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -20,19 +22,18 @@ type Model struct {
 
 func (m *Model) Build(_ context.Context, state widget.State) widget.Widget {
 	if m.ChildFunc != nil {
-		return m.ChildFunc(state.(*widget.StatefulElementImpl[State]).Current().InFocus)
+		return m.ChildFunc(false)
 	}
 	return m.Child
 }
 
-func (m *Model) Element() widget.Element {
+func (m *Model) Element() widget.State {
 	return &Element{
-		StatefulElementImpl: widget.NewStatefulElement(State{
-			InFocus:     false,
-			OnKeyPress:  m.onKeyPress,
-			OnFocusGain: m.onFocusGain,
-			OnFocusLoss: m.onFocusLoss,
-		}),
+		ID:          random.ID(),
+		HasFocus:    false,
+		OnKeyPress:  m.onKeyPress,
+		OnFocusGain: m.onFocusGain,
+		OnFocusLoss: m.onFocusLoss,
 	}
 }
 

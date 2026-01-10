@@ -1,6 +1,9 @@
 package canvas
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"github.com/calmdaysamuel/cheesecake/mouseactions"
+	"github.com/charmbracelet/lipgloss"
+)
 
 type Cell struct {
 	BgColor         lipgloss.Color
@@ -12,6 +15,7 @@ type Cell struct {
 	Bold            bool
 	Underline       bool
 	UnderlineSpaces bool
+	ActionManagers  []mouseactions.Manager
 }
 
 func (c Cell) View() string {

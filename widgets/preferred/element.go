@@ -3,6 +3,7 @@ package preferred
 import (
 	"github.com/calmdaysamuel/cheesecake/canvas"
 	"github.com/calmdaysamuel/cheesecake/constraints"
+	"github.com/calmdaysamuel/cheesecake/mouseactions"
 	"github.com/calmdaysamuel/cheesecake/size"
 	"github.com/calmdaysamuel/cheesecake/widget"
 )
@@ -16,6 +17,7 @@ type Element struct {
 	parent       *Model
 	renderObject widget.RenderElement
 	ID           string
+	mouseactions.Manager
 }
 
 func (e *Element) Flex() (int, int) {
@@ -49,7 +51,7 @@ func (e *Element) DirectDescendants() []widget.Widget {
 }
 
 func (e *Element) View() canvas.Canvas {
-	return canvas.MergeTopLeft(canvas.New(e.Width, e.Height), e.renderObject.View())
+	return canvas.Truncate(canvas.MergeTopLeft(canvas.New(e.Width, e.Height), e.renderObject.View()), e.Width, e.Height)
 }
 
 func (e *Element) SetConstraints(constraints constraints.Constraints) {

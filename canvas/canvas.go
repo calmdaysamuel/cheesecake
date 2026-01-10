@@ -1,9 +1,11 @@
 package canvas
 
 import (
-	"github.com/charmbracelet/lipgloss"
 	"slices"
 	"strings"
+
+	"github.com/calmdaysamuel/cheesecake/mouseactions"
+	"github.com/charmbracelet/lipgloss"
 )
 
 type Canvas []Row
@@ -83,6 +85,7 @@ func Merge(verticalPosition, horizontalPosition lipgloss.Position, canvases ...C
 				if cellCopy.BgColor == "" {
 					cellCopy.BgColor = mergedCanvas[j][k].BgColor
 				}
+				cellCopy.ActionManagers = append(cellCopy.ActionManagers, mergedCanvas[j][k].ActionManagers...)
 				mergedCanvas[j][k] = cellCopy
 			}
 		}
@@ -302,4 +305,13 @@ func (c Canvas) View() string {
 		lines = append(lines, row.View())
 	}
 	return strings.Join(lines, "\n")
+}
+
+func (c Canvas) AddMouseActionManager(manager ...mouseactions.Manager) {
+	for i, row := range c {
+		for j, cell := range row {
+			cell.ActionManagers = append(cell.ActionManagers, manager...)
+			c[i][j] = cell
+		}
+	}
 }
