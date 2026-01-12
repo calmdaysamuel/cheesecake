@@ -6,6 +6,7 @@ import (
 	"github.com/calmdaysamuel/cheesecake/mouseactions"
 	"github.com/calmdaysamuel/cheesecake/size"
 	"github.com/calmdaysamuel/cheesecake/widget"
+	"github.com/charmbracelet/lipgloss"
 )
 
 var _ widget.RenderElement = &Element{}
@@ -16,7 +17,8 @@ type Element struct {
 	spacing canvas.Canvas
 	flex    int
 	size.Size
-	mouseactions.Manager
+	*mouseactions.Manager
+	BgColor lipgloss.Color
 }
 
 func (e *Element) Flex() (int, int) {
@@ -41,6 +43,6 @@ func (e *Element) View() canvas.Canvas {
 }
 
 func (e *Element) SetConstraints(constraints constraints.Constraints) {
-	e.spacing = canvas.New(constraints.MaxWidth, constraints.MaxHeight)
+	e.spacing = canvas.AddMouseActionManager(canvas.NewWithCell(constraints.MaxWidth, constraints.MaxHeight, canvas.DefaultCellWithBgColor(string(e.BgColor))), e.Manager)
 	e.Width, e.Height = canvas.Size(e.spacing)
 }

@@ -16,7 +16,7 @@ type Element struct {
 	constraints.Constraints
 	size.Size
 	ID string
-	mouseactions.Manager
+	*mouseactions.Manager
 }
 
 func (e *Element) Widget() widget.Widget {

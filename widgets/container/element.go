@@ -16,7 +16,7 @@ type Element struct {
 	parent       *Model
 	renderObject widget.RenderElement
 	ID           string
-	mouseactions.Manager
+	*mouseactions.Manager
 }
 
 func (e *Element) Identifier() string {

@@ -16,7 +16,7 @@ type Element struct {
 	constraints.Constraints
 	size.Size
 	ID string
-	mouseactions.Manager
+	*mouseactions.Manager
 }
 
 func (e *Element) Widget() widget.Widget {
@@ -43,11 +43,11 @@ func (e *Element) DirectDescendants() []widget.Widget {
 }
 
 func (e *Element) View() canvas.Canvas {
-	childrenViews := make([]canvas.Canvas, 0)
+	childrenViews := []canvas.Canvas{canvas.NewWithCell(e.Width, e.Height, canvas.DefaultCellWithBgColor(string(e.parentWidget.BgColor)))}
 	for _, child := range e.renderObjectChildren {
 		childrenViews = append(childrenViews, child.View())
 	}
-	return canvas.Merge(e.parentWidget.VerticalAlignment, e.parentWidget.HorizontalAlignment, childrenViews...)
+	return canvas.AddMouseActionManager(canvas.MergeWithMouseManager(e.parentWidget.VerticalAlignment, e.parentWidget.HorizontalAlignment, false, childrenViews...), e.Manager)
 }
 
 func (e *Element) SetConstraints(constraints constraints.Constraints) {

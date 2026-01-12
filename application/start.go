@@ -8,7 +8,7 @@ import (
 )
 
 func Start(w widget.Widget) error {
-	t := tea.NewProgram(NewProgram(context.Background(), w), tea.WithAltScreen(), tea.WithoutCatchPanics())
+	t := tea.NewProgram(NewProgram(context.Background(), w), tea.WithAltScreen(), tea.WithoutCatchPanics(), tea.WithMouseAllMotion())
 	if _, err := t.Run(); err != nil {
 		return err
 	}

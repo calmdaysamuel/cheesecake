@@ -17,7 +17,7 @@ type Element struct {
 	parent       *Model
 	renderObject widget.RenderElement
 	ID           string
-	mouseactions.Manager
+	*mouseactions.Manager
 }
 
 func (e *Element) Flex() (int, int) {
@@ -47,11 +47,10 @@ func (e *Element) DirectDescendants() []widget.Widget {
 
 func (e *Element) View() canvas.Canvas {
 	background := canvas.NewWithCell(e.Width, e.Height, canvas.DefaultCellWithBgColor(string(e.parent.BgColor)))
-	background.AddMouseActionManager(e.Manager)
 	if e.renderObject == nil {
 		return background
 	}
-	c := canvas.Merge(e.parent.VerticalAlignment, e.parent.HorizontalAlignment, background, e.renderObject.View())
+	c := canvas.Merge(e.parent.VerticalAlignment, e.parent.HorizontalAlignment, canvas.AddMouseActionManager(background, e.Manager), e.renderObject.View())
 	return c
 }
 

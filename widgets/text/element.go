@@ -20,7 +20,7 @@ type Element struct {
 	size.Size
 	ID     string
 	canvas canvas.Canvas
-	mouseactions.Manager
+	*mouseactions.Manager
 }
 
 func (e *Element) Dispose() {}
@@ -67,8 +67,8 @@ func (e *Element) SetConstraints(constraints constraints.Constraints) {
 		c = canvas.MergeTopLeft(c)
 		totalCanvas = append(totalCanvas, c...)
 	}
-	totalCanvas.AddMouseActionManager(e.Manager)
-	e.canvas = totalCanvas
+
+	e.canvas = canvas.AddMouseActionManager(totalCanvas, e.Manager)
 	e.Width, e.Height = canvas.Size(e.canvas)
 }
 

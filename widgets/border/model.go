@@ -17,7 +17,7 @@ type Model struct {
 	Label  string
 	Sides  []bool
 	Style  lipgloss.Style
-	mouseactions.Manager
+	*mouseactions.Manager
 }
 
 func (m *Model) Element() widget.RenderElement {
@@ -64,7 +64,7 @@ func WithSides(sides ...bool) Option {
 	}
 }
 
-func WithMouseActions(m mouseactions.Manager) Option {
+func WithMouseActions(m *mouseactions.Manager) Option {
 	return func(model *Model) {
 		model.Manager = m
 	}

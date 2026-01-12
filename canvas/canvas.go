@@ -53,6 +53,10 @@ func Truncate(canvas Canvas, width, height int) Canvas {
 
 // Merge the provided canvas assuming the first layer is at the bottom and the last layer is at the top
 func Merge(verticalPosition, horizontalPosition lipgloss.Position, canvases ...Canvas) Canvas {
+	return MergeWithMouseManager(verticalPosition, horizontalPosition, true, canvases...)
+}
+
+func MergeWithMouseManager(verticalPosition, horizontalPosition lipgloss.Position, mergeMouseManager bool, canvases ...Canvas) Canvas {
 	maxWidth := 0
 	maxHeight := 0
 	for _, canvas := range canvases {
@@ -85,7 +89,9 @@ func Merge(verticalPosition, horizontalPosition lipgloss.Position, canvases ...C
 				if cellCopy.BgColor == "" {
 					cellCopy.BgColor = mergedCanvas[j][k].BgColor
 				}
-				cellCopy.ActionManagers = append(cellCopy.ActionManagers, mergedCanvas[j][k].ActionManagers...)
+				if mergeMouseManager {
+					cellCopy.ActionManagers = append(cellCopy.ActionManagers, mergedCanvas[j][k].ActionManagers...)
+				}
 				mergedCanvas[j][k] = cellCopy
 			}
 		}
@@ -114,6 +120,8 @@ func JoinVertical(horizontalPosition lipgloss.Position, canvases ...Canvas) Canv
 				if cell.Transparent {
 					continue
 				}
+				oldCell := mergedCanvas[j][k]
+				cell.ActionManagers = append(cell.ActionManagers, oldCell.ActionManagers...)
 				mergedCanvas[j][k] = cell
 			}
 			j++
@@ -148,9 +156,11 @@ func JoinHorizontal(verticalPosition lipgloss.Position, canvases ...Canvas) Canv
 		for j, row := range canvas {
 			for k, cell := range row {
 				maxWidth = max(len(row), maxWidth)
+				oldCell := mergedCanvas[j][k+offset]
 				if cell.Transparent {
 					continue
 				}
+				cell.ActionManagers = append(cell.ActionManagers, oldCell.ActionManagers...)
 				mergedCanvas[j][k+offset] = cell
 			}
 		}
@@ -307,11 +317,12 @@ func (c Canvas) View() string {
 	return strings.Join(lines, "\n")
 }
 
-func (c Canvas) AddMouseActionManager(manager ...mouseactions.Manager) {
+func AddMouseActionManager(c Canvas, manager ...*mouseactions.Manager) Canvas {
 	for i, row := range c {
 		for j, cell := range row {
 			cell.ActionManagers = append(cell.ActionManagers, manager...)
 			c[i][j] = cell
 		}
 	}
+	return c
 }

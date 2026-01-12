@@ -14,6 +14,4 @@ type RenderElement interface {
 	View() canvas.Canvas
 	SetConstraints(constraints constraints.Constraints)
 	GetSize() size.Size
-	OnHoverStateChange(isHovering bool)
-	OnClick()
 }

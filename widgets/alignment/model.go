@@ -16,7 +16,7 @@ type Model struct {
 	BgColor             lipgloss.Color
 	VerticalAlignment   lipgloss.Position
 	HorizontalAlignment lipgloss.Position
-	mouseactions.Manager
+	*mouseactions.Manager
 }
 
 func (m *Model) Element() widget.RenderElement {
@@ -98,7 +98,7 @@ func WithBackgroundColor(color lipgloss.Color) Option {
 	}
 }
 
-func WithMouseActions(m mouseactions.Manager) Option {
+func WithMouseActions(m *mouseactions.Manager) Option {
 	return func(model *Model) {
 		model.Manager = m
 	}

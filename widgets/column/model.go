@@ -15,7 +15,7 @@ type Model struct {
 	Style             lipgloss.Style
 	Children          []widget.Widget
 	MainAxisAlignment lipgloss.Position
-	mouseactions.Manager
+	*mouseactions.Manager
 }
 
 func (m *Model) Element() widget.RenderElement {
@@ -42,7 +42,7 @@ func WithMainAxisAlignment(position lipgloss.Position) Option {
 	}
 }
 
-func WithMouseActions(m mouseactions.Manager) Option {
+func WithMouseActions(m *mouseactions.Manager) Option {
 	return func(model *Model) {
 		model.Manager = m
 	}

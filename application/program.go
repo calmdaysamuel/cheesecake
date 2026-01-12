@@ -2,11 +2,11 @@ package application
 
 import (
 	"context"
-	"fmt"
 	"slices"
 	"time"
 
 	"github.com/calmdaysamuel/cheesecake/constraints"
+	"github.com/calmdaysamuel/cheesecake/mouseactions"
 	"github.com/calmdaysamuel/cheesecake/tree"
 	"github.com/calmdaysamuel/cheesecake/widget"
 	"github.com/calmdaysamuel/cheesecake/widgets/focus"
@@ -29,6 +29,7 @@ type Program struct {
 	focusChain       []*focus.Element
 	constraints      tea.WindowSizeMsg
 	frameTime        time.Duration
+	oldMouseManagers []*mouseactions.Manager
 }
 
 func (p *Program) Init() tea.Cmd {
@@ -52,7 +53,7 @@ func (p *Program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			p.HandleKeyEvent(msg)
 		}
 	case tea.MouseMsg:
-		p.HandleClick(msg)
+		p.HandleMouseEvent(msg)
 	}
 	return p, nil
 }
@@ -139,8 +140,49 @@ func (p *Program) HandleKeyEvent(msg tea.KeyMsg) {
 	}
 }
 
-func (p *Program) HandleClick(msg tea.MouseMsg) {
-	fmt.Println("clicking")
+func (p *Program) HandleMouseEvent(msg tea.MouseMsg) {
+	if p.rootRenderObject != nil {
+		var c = p.rootRenderObject.View()
+		row, column := msg.X, msg.Y
+		if column >= len(c) || row >= len(c[0]) {
+			for _, manager := range p.oldMouseManagers {
+				manager.Reset()
+			}
+			p.oldMouseManagers = nil
+			return
+		}
+
+		cell := c[column][row]
+		currentActionManagers := make([]*mouseactions.Manager, 0)
+		for _, manager := range cell.ActionManagers {
+			if manager == nil {
+				continue
+			}
+			currentActionManagers = append(currentActionManagers, manager)
+		}
+
+		for _, manager := range p.oldMouseManagers {
+			if slices.Contains(currentActionManagers, manager) {
+				continue
+			}
+			manager.Reset()
+		}
+		p.oldMouseManagers = currentActionManagers
+		for _, manager := range currentActionManagers {
+			manager.OnHoverStateChange(true)
+		}
+		switch msg.Action {
+		case tea.MouseActionPress:
+			for _, manager := range currentActionManagers {
+				manager.OnMouseDown(msg.Button)
+			}
+		case tea.MouseActionRelease:
+			for _, manager := range currentActionManagers {
+				manager.OnMouseUp(msg.Button)
+			}
+		}
+	}
+
 }
 
 func TickAtFrameRate(frameRate int64) tea.Cmd {

@@ -15,7 +15,7 @@ type Cell struct {
 	Bold            bool
 	Underline       bool
 	UnderlineSpaces bool
-	ActionManagers  []mouseactions.Manager
+	ActionManagers  []*mouseactions.Manager
 }
 
 func (c Cell) View() string {
