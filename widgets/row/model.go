@@ -48,3 +48,9 @@ func WithMouseActions(m *mouseactions.Manager) Option {
 		model.Manager = m
 	}
 }
+
+func WithBackgroundColor(color lipgloss.Color) Option {
+	return func(model *Model) {
+		model.BgColor = color
+	}
+}

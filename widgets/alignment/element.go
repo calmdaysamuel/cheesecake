@@ -50,7 +50,7 @@ func (e *Element) View() canvas.Canvas {
 	if e.renderObject == nil {
 		return background
 	}
-	c := canvas.Merge(e.parent.VerticalAlignment, e.parent.HorizontalAlignment, canvas.AddMouseActionManager(background, e.Manager), e.renderObject.View())
+	c := canvas.AddMouseActionManager(canvas.Merge(e.parent.VerticalAlignment, e.parent.HorizontalAlignment, background, e.renderObject.View()), e.Manager)
 	return c
 }
 

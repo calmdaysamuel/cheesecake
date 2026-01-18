@@ -4,6 +4,7 @@ import (
 	"github.com/calmdaysamuel/cheesecake/mouseactions"
 	"github.com/calmdaysamuel/cheesecake/random"
 	"github.com/calmdaysamuel/cheesecake/widget"
+	"github.com/charmbracelet/lipgloss"
 )
 
 var _ widget.RenderWidget = &Model{}
@@ -15,6 +16,7 @@ type Model struct {
 	PreferredHeight int
 	PreferredWidth  int
 	mouseactions.Manager
+	BgColor lipgloss.Color
 }
 
 func (m *Model) Element() widget.RenderElement {
@@ -50,5 +52,10 @@ func Width(child widget.Widget, width int, options ...Option) *Model {
 func WithMouseActions(m mouseactions.Manager) Option {
 	return func(model *Model) {
 		model.Manager = m
+	}
+}
+func WithBackgroundColor(color lipgloss.Color) Option {
+	return func(model *Model) {
+		model.BgColor = color
 	}
 }

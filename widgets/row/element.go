@@ -43,11 +43,11 @@ func (e *Element) DirectDescendants() []widget.Widget {
 }
 
 func (e *Element) View() canvas.Canvas {
-	childrenViews := []canvas.Canvas{canvas.NewWithCell(e.Width, e.Height, canvas.DefaultCellWithBgColor(string(e.parentWidget.BgColor)))}
+	childrenViews := []canvas.Canvas{}
 	for _, child := range e.renderObjectChildren {
 		childrenViews = append(childrenViews, child.View())
 	}
-	return canvas.AddMouseActionManager(canvas.Truncate(canvas.JoinHorizontal(e.parentWidget.MainAxisAlignment, childrenViews...), e.MaxWidth, e.MaxHeight), e.Manager)
+	return canvas.AddMouseActionManager(canvas.Truncate(canvas.MergeTopLeft(canvas.NewWithCell(e.Width, e.Height, canvas.DefaultCellWithBgColor(string(e.parentWidget.BgColor))), canvas.JoinHorizontal(e.parentWidget.MainAxisAlignment, childrenViews...)), e.MaxWidth, e.MaxHeight), e.Manager)
 }
 
 func (e *Element) SetConstraints(constraints constraints.Constraints) {

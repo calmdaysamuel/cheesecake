@@ -47,7 +47,7 @@ func (e *Element) View() canvas.Canvas {
 	for _, child := range e.renderObjectChildren {
 		childrenViews = append(childrenViews, child.View())
 	}
-	return canvas.Truncate(canvas.JoinVertical(e.parentWidget.MainAxisAlignment, childrenViews...), e.MaxWidth, e.MaxHeight)
+	return canvas.AddMouseActionManager(canvas.Truncate(canvas.MergeTopLeft(canvas.NewWithCell(e.Width, e.Height, canvas.DefaultCellWithBgColor(string(e.parentWidget.BgColor))), canvas.JoinVertical(e.parentWidget.MainAxisAlignment, childrenViews...)), e.MaxWidth, e.MaxHeight), e.Manager)
 }
 
 func (e *Element) SetConstraints(constraints constraints.Constraints) {

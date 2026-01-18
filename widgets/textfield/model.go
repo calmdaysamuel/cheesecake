@@ -2,12 +2,15 @@ package textfield
 
 import (
 	"context"
+	"math"
 	"time"
 
+	"github.com/calmdaysamuel/cheesecake/constraints"
 	"github.com/calmdaysamuel/cheesecake/random"
 	"github.com/calmdaysamuel/cheesecake/widget"
 	"github.com/calmdaysamuel/cheesecake/widgets/alignment"
 	"github.com/calmdaysamuel/cheesecake/widgets/focus"
+	"github.com/calmdaysamuel/cheesecake/widgets/layoutbuilder"
 	"github.com/calmdaysamuel/cheesecake/widgets/preferred"
 	"github.com/calmdaysamuel/cheesecake/widgets/text"
 	tea "github.com/charmbracelet/bubbletea"
@@ -33,87 +36,102 @@ type Model struct {
 }
 
 func (m *Model) Element() widget.State {
-	return &Element{
+	return &State{
 		ID: random.ID(),
 	}
 }
 
 func (m *Model) Build(ctx context.Context, element widget.State) widget.Widget {
-	state := element.(*Element)
-	displayText := m.Placeholder
-	theme := m.OutOfFocusTheme
-	if state.InFocus {
-		theme = m.InFocusTheme
-	}
-	displayTextStyle := theme.PlaceholderStyle
-	if state.Text != "" {
-		displayText = state.Text
-		displayTextStyle = theme.PrimaryTextStyle
-		if state.InFocus {
-			if len(state.Text) == state.CursorPosition {
-				displayText += " "
+	return layoutbuilder.New(
+		func(constraints constraints.Constraints) widget.Widget {
+			state := element.(*State)
+			displayText := m.Placeholder
+			theme := m.OutOfFocusTheme
+			if state.InFocus {
+				theme = m.InFocusTheme
 			}
-		}
-	}
-	return focus.New(
-		preferred.Height(
-			alignment.TopLeft(
-				text.New(displayText, text.WithTextStyle(displayTextStyle),
-					text.WithTextStyleFunc(func(idx int, char rune) *lipgloss.Style {
-						if state.InFocus {
-							if time.Now().UnixMilli()%1000 < 500 || state.LastTypeTime.Add(time.Second/2).After(time.Now()) {
-								if idx == state.CursorPosition {
-									c := theme.CursorStyle
-									return &c
-								}
-							}
-						}
-						return nil
-					})),
-				alignment.WithBackgroundColor(theme.BackgroundColor),
-			),
-			m.VisibleLines,
-		),
-		focus.WithOnFocusGain(func() {
-			state.InFocus = true
-		}),
-		focus.WithOnFocusLoss(func() {
-			state.InFocus = false
-		}),
-		focus.WithOnKeyPress(func(msg tea.KeyMsg) {
-			beforeCursor := state.Text[:state.CursorPosition]
-			afterCursor := state.Text[state.CursorPosition:]
-			kp := msg.String()
-			switch {
-			case kp == "left":
-				state.CursorPosition = state.CursorPosition - 1
-				state.CursorPosition = max(state.CursorPosition, 0)
-			case kp == "right":
-				state.CursorPosition = state.CursorPosition + 1
-				state.CursorPosition = min(state.CursorPosition, len(state.Text))
-			case kp == "backspace":
-				if len(beforeCursor) == 0 {
-					return
+			displayTextStyle := theme.PlaceholderStyle
+			if state.Text != "" {
+				displayText = state.Text
+				displayTextStyle = theme.PrimaryTextStyle
+				if state.InFocus {
+					if len(state.Text) == state.CursorPosition {
+						displayText += " "
+					}
 				}
-				beforeCursor = beforeCursor[:len(beforeCursor)-1]
-				state.CursorPosition = state.CursorPosition - 1
-			case len(kp) == 1:
-				beforeCursor += msg.String()
-				state.CursorPosition = state.CursorPosition + 1
 			}
-			state.LastTypeTime = time.Now()
-			state.Text = beforeCursor + afterCursor
-			if m.OnValueChange != nil {
-				m.OnValueChange(state.Text)
+			if len(displayText) > constraints.MaxWidth {
+				displayText = displayText[max(len(displayText)-constraints.MaxWidth):]
 			}
-		}),
-	)
+			return focus.New(
+				preferred.Height(
+					alignment.TopLeft(
+						text.New(displayText, text.WithTextStyle(displayTextStyle),
+							text.WithTextStyleFunc(func(idx int, char rune) *lipgloss.Style {
+								if state.InFocus {
+									if time.Now().UnixMilli()%1000 < 500 || state.LastTypeTime.Add(time.Second/2).After(time.Now()) {
+										if idx == state.CursorPosition {
+											c := theme.CursorStyle
+											return &c
+										}
+									}
+								}
+								return nil
+							})),
+						alignment.WithBackgroundColor(theme.BackgroundColor),
+					),
+					m.VisibleLines,
+				),
+				focus.WithOnFocusGain(func() {
+					state.InFocus = true
+				}),
+				focus.WithOnFocusLoss(func() {
+					state.InFocus = false
+				}),
+				focus.WithOnKeyPress(func(msg tea.KeyMsg) {
+					beforeCursor := state.Text[:state.CursorPosition]
+					afterCursor := state.Text[state.CursorPosition:]
+					kp := msg.String()
+					switch {
+					case kp == "alt+left":
+						state.CursorPosition = 0
+						state.CursorPosition = max(state.CursorPosition, 0)
+					case kp == "left":
+						state.CursorPosition = state.CursorPosition - 1
+						state.CursorPosition = max(state.CursorPosition, 0)
+					case kp == "alt+right":
+						state.CursorPosition = math.MaxInt
+						state.CursorPosition = min(state.CursorPosition, len(state.Text))
+					case kp == "right":
+						state.CursorPosition = state.CursorPosition + 1
+						state.CursorPosition = min(state.CursorPosition, len(state.Text))
+					case kp == "backspace":
+						if len(beforeCursor) == 0 {
+							return
+						}
+						beforeCursor = beforeCursor[:len(beforeCursor)-1]
+						state.CursorPosition = state.CursorPosition - 1
+					case len(kp) == 1:
+						beforeCursor += msg.String()
+						state.CursorPosition = state.CursorPosition + 1
+					}
+					state.LastTypeTime = time.Now()
+					state.Text = beforeCursor + afterCursor
+					if m.OnValueChange != nil {
+						m.OnValueChange(state.Text)
+					}
+				}),
+			)
+		})
 }
 
 func New(options ...Option) *Model {
 	m := &Model{
 		VisibleLines: 1,
 		Placeholder:  "Type something...",
+		InFocusTheme: Theme{
+			CursorStyle: lipgloss.NewStyle().Background(lipgloss.Color("15")).Foreground(lipgloss.Color("0")),
+		},
 	}
 	for _, option := range options {
 		option(m)

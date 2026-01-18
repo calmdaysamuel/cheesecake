@@ -16,6 +16,7 @@ type Model struct {
 	Children          []widget.Widget
 	MainAxisAlignment lipgloss.Position
 	*mouseactions.Manager
+	BgColor lipgloss.Color
 }
 
 func (m *Model) Element() widget.RenderElement {
@@ -45,5 +46,11 @@ func WithMainAxisAlignment(position lipgloss.Position) Option {
 func WithMouseActions(m *mouseactions.Manager) Option {
 	return func(model *Model) {
 		model.Manager = m
+	}
+}
+
+func WithBackgroundColor(color lipgloss.Color) Option {
+	return func(model *Model) {
+		model.BgColor = color
 	}
 }

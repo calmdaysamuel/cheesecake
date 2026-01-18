@@ -51,7 +51,7 @@ func (e *Element) DirectDescendants() []widget.Widget {
 }
 
 func (e *Element) View() canvas.Canvas {
-	return canvas.Truncate(canvas.MergeTopLeft(canvas.New(e.Width, e.Height), e.renderObject.View()), e.Width, e.Height)
+	return canvas.Truncate(canvas.MergeTopLeft(canvas.NewWithCell(e.Width, e.Height, canvas.DefaultCellWithBgColor(string(e.parent.BgColor))), e.renderObject.View()), e.Width, e.Height)
 }
 
 func (e *Element) SetConstraints(constraints constraints.Constraints) {
