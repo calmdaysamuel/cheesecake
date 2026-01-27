@@ -9,9 +9,9 @@ import (
 	"github.com/calmdaysamuel/cheesecake/mouseactions"
 	"github.com/calmdaysamuel/cheesecake/tree"
 	"github.com/calmdaysamuel/cheesecake/widget"
-	"github.com/calmdaysamuel/cheesecake/widgets/focus"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	werror "github.com/palantir/witchcraft-go-error"
 )
 
 type FrameTick struct {
@@ -26,10 +26,12 @@ type Program struct {
 	FrameRate        int64
 	Ctx              context.Context
 	rootRenderObject widget.RenderElement
-	focusChain       []*focus.Element
 	constraints      tea.WindowSizeMsg
 	frameTime        time.Duration
 	oldMouseManagers []*mouseactions.Manager
+	LastError        error
+	FocusChain       []*tree.FocusNode
+	FocusedNode      *tree.FocusNode
 }
 
 func (p *Program) Init() tea.Cmd {
@@ -45,12 +47,15 @@ func (p *Program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		p.constraints = msg
 	case tea.KeyMsg:
 		if msg.String() == "tab" {
-			p.ForwardFocus()
+			p.FocusedNode, p.LastError = tree.FocusTreeStep(p.Ctx, p.FocusChain, p.FocusedNode, false, tree.FocusMoveForward)
+			if p.LastError != nil {
+				return p, tea.Quit
+			}
 		} else if msg.String() == "shift+tab" {
-			p.BackwardFocus()
-
-		} else {
-			p.HandleKeyEvent(msg)
+			p.FocusedNode, p.LastError = tree.FocusTreeStep(p.Ctx, p.FocusChain, p.FocusedNode, false, tree.FocusMoveBackward)
+			if p.LastError != nil {
+				return p, tea.Quit
+			}
 		}
 	case tea.MouseMsg:
 		p.HandleMouseEvent(msg)
@@ -61,62 +66,70 @@ func (p *Program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func (p *Program) FrameStep() (tea.Model, tea.Cmd) {
 	startTime := time.Now()
 	defer func() { p.frameTime = time.Since(startTime) }()
-	tree.Initialize(p.Ctx, p.Tree)
-	p.rootRenderObject = tree.RootRenderObject(p.Tree)
-	p.HandleFocus()
+	p.LastError = tree.RefreshWidgetTree(p.Ctx, p.Tree)
+	if p.LastError != nil {
+		return p, tea.Quit
+	}
+	p.rootRenderObject, p.LastError = tree.RootRenderObject(p.Ctx, p.Tree)
+	if p.LastError != nil {
+		return p, tea.Quit
+	}
+	p.LastError = p.HandleFocus()
+	if p.LastError != nil {
+		return p, tea.Quit
+	}
 	p.rootRenderObject.SetConstraints(constraints.Tight(p.constraints.Width, p.constraints.Height))
 	return p, TickAtFrameRate(p.FrameRate)
 }
 
-func (p *Program) HandleFocus() {
-	p.focusChain = tree.Focus(p.Ctx, p.Tree)
-	for _, element := range p.focusChain {
-		if element.InFocus() {
-			return
+func (p *Program) HandleFocus() error {
+	p.FocusChain = tree.RefreshFocusTree(p.Ctx, p.Tree, nil)
+	if p.FocusedNode == nil {
+		var err error
+		if p.FocusedNode, err = tree.FocusTreeStep(p.Ctx, p.FocusChain, nil, true, tree.FocusMoveForward); err != nil {
+			return p.LastError
 		}
 	}
-	if len(p.focusChain) > 0 {
-		p.focusChain[0].GainLocus()
-	}
+	return nil
 }
 
-func (p *Program) ForwardFocus() {
-	p.focusChain = tree.Focus(p.Ctx, p.Tree)
-	if len(p.focusChain) <= 0 {
-		return
-	}
-	found := slices.IndexFunc(p.focusChain, func(element *focus.Element) bool {
-		return element.InFocus()
-	})
-	if found != -1 {
-		p.focusChain[found].LoseFocus()
-	}
-	found++
-	if found < len(p.focusChain) {
-		p.focusChain[found].GainLocus()
-	} else {
-		p.focusChain[0].GainLocus()
-	}
-}
-
-func (p *Program) BackwardFocus() {
-	p.focusChain = tree.Focus(p.Ctx, p.Tree)
-	if len(p.focusChain) <= 0 {
-		return
-	}
-	found := slices.IndexFunc(p.focusChain, func(element *focus.Element) bool {
-		return element.InFocus()
-	})
-	if found != -1 {
-		p.focusChain[found].LoseFocus()
-	}
-	found--
-	if found >= 0 {
-		p.focusChain[found].GainLocus()
-	} else {
-		p.focusChain[len(p.focusChain)-1].GainLocus()
-	}
-}
+//func (p *Program) ForwardFocus() {
+//	p.focusChain = tree.RefreshFocusTree(p.Ctx, p.Tree)
+//	if len(p.focusChain) <= 0 {
+//		return
+//	}
+//	found := slices.IndexFunc(p.focusChain, func(element *focus.Element) bool {
+//		return element.InFocus()
+//	})
+//	if found != -1 {
+//		p.focusChain[found].LoseFocus()
+//	}
+//	found++
+//	if found < len(p.focusChain) {
+//		p.focusChain[found].GainLocus()
+//	} else {
+//		p.focusChain[0].GainLocus()
+//	}
+//}
+//
+//func (p *Program) BackwardFocus() {
+//	p.focusChain = tree.RefreshFocusTree(p.Ctx, p.Tree)
+//	if len(p.focusChain) <= 0 {
+//		return
+//	}
+//	found := slices.IndexFunc(p.focusChain, func(element *focus.Element) bool {
+//		return element.InFocus()
+//	})
+//	if found != -1 {
+//		p.focusChain[found].LoseFocus()
+//	}
+//	found--
+//	if found >= 0 {
+//		p.focusChain[found].GainLocus()
+//	} else {
+//		p.focusChain[len(p.focusChain)-1].GainLocus()
+//	}
+//}
 
 func (p *Program) View() string {
 	if p.rootRenderObject == nil {
@@ -127,18 +140,18 @@ func (p *Program) View() string {
 	return p.rootRenderObject.View().View()
 }
 
-func (p *Program) HandleKeyEvent(msg tea.KeyMsg) {
-	p.focusChain = tree.Focus(p.Ctx, p.Tree)
-	if len(p.focusChain) <= 0 {
-		return
-	}
-	found := slices.IndexFunc(p.focusChain, func(element *focus.Element) bool {
-		return element.InFocus()
-	})
-	if found >= 0 {
-		p.focusChain[found].OnKeyPressEvent(msg)
-	}
-}
+//func (p *Program) HandleKeyEvent(msg tea.KeyMsg) {
+//	p.focusChain = tree.RefreshFocusTree(p.Ctx, p.Tree)
+//	if len(p.focusChain) <= 0 {
+//		return
+//	}
+//	found := slices.IndexFunc(p.focusChain, func(element *focus.Element) bool {
+//		return element.InFocus()
+//	})
+//	if found >= 0 {
+//		p.focusChain[found].OnKeyPressEvent(msg)
+//	}
+//}
 
 func (p *Program) HandleMouseEvent(msg tea.MouseMsg) {
 	if p.rootRenderObject != nil {
@@ -191,13 +204,15 @@ func TickAtFrameRate(frameRate int64) tea.Cmd {
 	})
 }
 
-func NewProgram(ctx context.Context, root widget.Widget) *Program {
-	return &Program{
-		Ctx:  ctx,
-		Root: root,
-		Tree: &tree.Node{
-			W: root,
-		},
-		FrameRate: 30,
+func NewProgram(ctx context.Context, root widget.Widget) (*Program, error) {
+	rootNode, err := tree.NodeFromWidget(ctx, root)
+	if err != nil {
+		return nil, werror.WrapWithContextParams(ctx, err, "failed to create a new program.")
 	}
+	return &Program{
+		Ctx:       ctx,
+		Root:      root,
+		Tree:      rootNode,
+		FrameRate: 30,
+	}, nil
 }

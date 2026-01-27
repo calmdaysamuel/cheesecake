@@ -27,7 +27,7 @@ func (s *State) Init() {}
 
 func (s *State) Dispose() {}
 
-func (m *StatefulModel) Element() widget.State {
+func (m *StatefulModel) State() widget.State {
 	return &State{ID: random.ID()}
 }
 

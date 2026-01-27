@@ -13,8 +13,8 @@ type Option func(*Model)
 
 type Model struct {
 	Style             lipgloss.Style
-	Children          []widget.Widget
-	MainAxisAlignment lipgloss.Position
+	children          []widget.Widget
+	mainAxisAlignment lipgloss.Position
 	*mouseactions.Manager
 	BgColor lipgloss.Color
 }
@@ -29,7 +29,7 @@ func (m *Model) Element() widget.RenderElement {
 
 func New(children []widget.Widget, options ...Option) *Model {
 	m := &Model{
-		Children: children,
+		children: children,
 	}
 	for _, option := range options {
 		option(m)
@@ -39,7 +39,7 @@ func New(children []widget.Widget, options ...Option) *Model {
 
 func WithMainAxisAlignment(position lipgloss.Position) Option {
 	return func(model *Model) {
-		model.MainAxisAlignment = position
+		model.mainAxisAlignment = position
 	}
 }
 

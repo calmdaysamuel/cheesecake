@@ -41,9 +41,9 @@ func (e *Element) SetConstraints(constraints constraints.Constraints) {
 			cell := canvas.Cell{
 				Runes: []rune{char},
 			}
-			style := e.parentWidget.Style
-			if e.parentWidget.StyleFunc != nil {
-				cellStyle := e.parentWidget.StyleFunc(charIdx, char)
+			style := e.parentWidget.style
+			if e.parentWidget.styleFunc != nil {
+				cellStyle := e.parentWidget.styleFunc(charIdx, char)
 				if cellStyle != nil {
 					style = *cellStyle
 				}

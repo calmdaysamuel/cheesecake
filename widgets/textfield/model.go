@@ -35,7 +35,7 @@ type Model struct {
 	OutOfFocusTheme Theme
 }
 
-func (m *Model) Element() widget.State {
+func (m *Model) State() widget.State {
 	return &State{
 		ID: random.ID(),
 	}
@@ -60,6 +60,7 @@ func (m *Model) Build(ctx context.Context, element widget.State) widget.Widget {
 					}
 				}
 			}
+
 			if len(displayText) > constraints.MaxWidth {
 				displayText = displayText[max(len(displayText)-constraints.MaxWidth):]
 			}

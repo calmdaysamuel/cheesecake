@@ -1,34 +1,42 @@
 package tree
 
 import (
+	"context"
+
 	"github.com/calmdaysamuel/cheesecake/widget"
+	werror "github.com/palantir/witchcraft-go-error"
+	wparams "github.com/palantir/witchcraft-go-params"
 )
 
-func RootRenderObject(root *Node) widget.RenderElement {
-	elements := RenderObjectTree(root)
+func RootRenderObject(ctx context.Context, root *Node) (widget.RenderElement, error) {
+	ctx = wparams.ContextWithSafeParam(ctx, "component", "findRootRenderObject")
+	elements := RefreshRenderTree(ctx, root)
 	if len(elements) == 0 {
-		return nil
+		return nil, werror.ErrorWithContextParams(ctx, "no render-able widget has been provided")
 	}
 	if len(elements) > 1 {
-		panic("strange: there must never more than one root render object")
+		return nil, werror.ErrorWithContextParams(ctx, "discovered more than one root render object widget")
 	}
-	return elements[0]
+	return elements[0], nil
 }
 
-func RenderObjectTree(root *Node) []widget.RenderElement {
-
+func RefreshRenderTree(ctx context.Context, root *Node) []widget.RenderElement {
+	ctx = wparams.ContextWithSafeParam(ctx, "component", "refreshRenderTree")
 	renderElementChildren := make([]widget.RenderElement, 0)
-	for _, child := range root.Children {
-		if rc := RenderObjectTree(child); rc != nil {
-			renderElementChildren = append(renderElementChildren, rc...)
+	switch root.Type() {
+	case StatefulWidgetType:
+		childRenderObjects := RefreshRenderTree(ctx, root.Stateful.Child)
+		renderElementChildren = append(renderElementChildren, childRenderObjects...)
+	case RenderWidgetType:
+		for _, child := range root.RenderWidget.Children {
+			childRenderObjects := RefreshRenderTree(ctx, child)
+			renderElementChildren = append(renderElementChildren, childRenderObjects...)
 		}
-	}
-	if renderObject, ok := root.E.(widget.RenderElement); ok {
-		renderObject.ClearChildren()
+		root.RenderWidget.Element.ClearChildren()
 		for _, child := range renderElementChildren {
-			renderObject.AdoptChild(child)
+			root.RenderWidget.Element.AdoptChild(child)
 		}
-		return []widget.RenderElement{renderObject}
+		return []widget.RenderElement{root.RenderWidget.Element}
 	}
 	return renderElementChildren
 }

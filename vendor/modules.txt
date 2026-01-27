@@ -1,3 +1,6 @@
+# github.com/Goldziher/go-utils v1.9.1
+## explicit; go 1.25
+github.com/Goldziher/go-utils/sliceutils
 # github.com/aymanbagabas/go-osc52/v2 v2.0.1
 ## explicit; go 1.16
 github.com/aymanbagabas/go-osc52/v2
@@ -45,13 +48,48 @@ github.com/muesli/cancelreader
 # github.com/muesli/termenv v0.16.0
 ## explicit; go 1.17
 github.com/muesli/termenv
+# github.com/palantir/witchcraft-go-error v1.42.0
+## explicit; go 1.25.0
+github.com/palantir/witchcraft-go-error
+github.com/palantir/witchcraft-go-error/internal/errors
+# github.com/palantir/witchcraft-go-logging v1.64.0
+## explicit; go 1.25.0
+github.com/palantir/witchcraft-go-logging/internal/gopath
+github.com/palantir/witchcraft-go-logging/wlog
+github.com/palantir/witchcraft-go-logging/wlog-zap
+github.com/palantir/witchcraft-go-logging/wlog-zap/internal
+github.com/palantir/witchcraft-go-logging/wlog/internal
+github.com/palantir/witchcraft-go-logging/wlog/svclog/svc1log
+# github.com/palantir/witchcraft-go-params v1.39.0
+## explicit; go 1.25.0
+github.com/palantir/witchcraft-go-params
+# github.com/palantir/witchcraft-go-tracing v1.41.0
+## explicit; go 1.25.0
+github.com/palantir/witchcraft-go-tracing/wtracing
 # github.com/rivo/uniseg v0.4.7
 ## explicit; go 1.18
 github.com/rivo/uniseg
 # github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e
 ## explicit; go 1.19
 github.com/xo/terminfo
-# golang.org/x/sys v0.36.0
+# go.uber.org/multierr v1.11.0
+## explicit; go 1.19
+go.uber.org/multierr
+# go.uber.org/zap v1.27.1
+## explicit; go 1.19
+go.uber.org/zap
+go.uber.org/zap/buffer
+go.uber.org/zap/internal
+go.uber.org/zap/internal/bufferpool
+go.uber.org/zap/internal/color
+go.uber.org/zap/internal/exit
+go.uber.org/zap/internal/pool
+go.uber.org/zap/internal/stacktrace
+go.uber.org/zap/zapcore
+# golang.org/x/exp v0.0.0-20240506185415-9bf2ced13842
+## explicit; go 1.20
+golang.org/x/exp/constraints
+# golang.org/x/sys v0.39.0
 ## explicit; go 1.24.0
 golang.org/x/sys/unix
 golang.org/x/sys/windows

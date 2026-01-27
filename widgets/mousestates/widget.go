@@ -5,6 +5,7 @@ import (
 
 	"github.com/calmdaysamuel/cheesecake/mouseactions"
 	"github.com/calmdaysamuel/cheesecake/random"
+	"github.com/calmdaysamuel/cheesecake/state"
 	"github.com/calmdaysamuel/cheesecake/widget"
 	"github.com/calmdaysamuel/cheesecake/widgets/column"
 	tea "github.com/charmbracelet/bubbletea"
@@ -34,7 +35,7 @@ func (s *State) Init() {}
 
 func (s *State) Dispose() {}
 
-func (m *Model) Element() widget.State {
+func (m *Model) State() state.State {
 	s := &State{Manager: &mouseactions.Manager{OnClick: m.OnClick}, ID: random.ID()}
 	return s
 }

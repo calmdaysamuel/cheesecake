@@ -13,8 +13,8 @@ type Option func(*Model)
 
 type Model struct {
 	Text      string
-	Style     lipgloss.Style
-	StyleFunc func(idx int, char rune) *lipgloss.Style
+	style     lipgloss.Style
+	styleFunc func(idx int, char rune) *lipgloss.Style
 	*mouseactions.Manager
 }
 
@@ -31,18 +31,18 @@ func New(text string, options ...Option) *Model {
 	for _, option := range options {
 		option(m)
 	}
-	m.Style = m.Style.UnsetMargins().UnsetBorderStyle().UnsetPadding()
+	m.style = m.style.UnsetMargins().UnsetBorderStyle().UnsetPadding()
 	return m
 }
 
 func WithTextStyle(s lipgloss.Style) Option {
 	return func(model *Model) {
-		model.Style = s
+		model.style = s
 	}
 }
 func WithTextStyleFunc(styleFunc func(idx int, char rune) *lipgloss.Style) Option {
 	return func(model *Model) {
-		model.StyleFunc = styleFunc
+		model.styleFunc = styleFunc
 	}
 }
 
