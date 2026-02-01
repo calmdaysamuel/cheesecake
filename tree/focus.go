@@ -7,6 +7,7 @@ import (
 	"github.com/Goldziher/go-utils/sliceutils"
 	"github.com/calmdaysamuel/cheesecake/state"
 	"github.com/calmdaysamuel/cheesecake/widgets/focus"
+	werror "github.com/palantir/witchcraft-go-error"
 )
 
 type FocusMoveDirection = int
@@ -17,10 +18,11 @@ const (
 )
 
 type FocusNode struct {
-	FocusNode    state.State
-	Chain        []state.State
-	ParentScope  state.State
-	ScopeEnabled bool
+	FocusNode       state.State
+	Chain           []state.State
+	ParentScope     state.State
+	KeyEventHandler focus.KeyEventHandler
+	ScopeEnabled    bool
 }
 
 func RefreshFocusTree(ctx context.Context, root *Node, chain []state.State) []*FocusNode {
@@ -30,7 +32,7 @@ func RefreshFocusTree(ctx context.Context, root *Node, chain []state.State) []*F
 	focusNodes := make([]*FocusNode, 0)
 	switch root.Type() {
 	case StatefulWidgetType:
-		switch root.Stateful.Widget.(type) {
+		switch f := root.Stateful.Widget.(type) {
 		case *focus.Scope:
 			childNodes := RefreshFocusTree(ctx, root.Stateful.Child, chain)
 			for _, node := range childNodes {
@@ -43,7 +45,10 @@ func RefreshFocusTree(ctx context.Context, root *Node, chain []state.State) []*F
 		case *focus.Node:
 			childNodes := RefreshFocusTree(ctx, root.Stateful.Child, append(chain, root.Stateful.State))
 			focusNodes = append(focusNodes, childNodes...)
-			focusNodes = append(focusNodes, &FocusNode{FocusNode: root.Stateful.State, Chain: chain})
+			focusNodes = append(focusNodes, &FocusNode{FocusNode: root.Stateful.State, Chain: chain, KeyEventHandler: f.Options.KeyEventHandler})
+		default:
+			childNodes := RefreshFocusTree(ctx, root.Stateful.Child, chain)
+			focusNodes = append(focusNodes, childNodes...)
 		}
 	case RenderWidgetType:
 		for _, child := range root.RenderWidget.Children {
@@ -57,24 +62,29 @@ func RefreshFocusTree(ctx context.Context, root *Node, chain []state.State) []*F
 func FocusTreeStep(ctx context.Context, nodes []*FocusNode, previous *FocusNode, ignoreScope bool, direction FocusMoveDirection) (newFocusedNode *FocusNode, rErr error) {
 	defer func() {
 		if previous != nil {
-			if rErr = focus.LoseFocus(previous.ParentScope); rErr != nil {
+			if rErr = werror.WrapWithContextParams(ctx, focus.LoseFocusForScope(ctx, previous.ParentScope), "failed to lose focus for previous focus scope"); rErr != nil {
 				return
 			}
-			if rErr = focus.LoseFocus(previous.FocusNode); rErr != nil {
+			if rErr = werror.WrapWithContextParams(ctx, focus.LoseFocusForNode(ctx, previous.FocusNode), "failed to lose focus for previous focus node"); rErr != nil {
 				return
 			}
-			for _, s := range previous.Chain {
-				if rErr = focus.LoseFocus(s); rErr != nil {
+			for _, nodeInChain := range previous.Chain {
+				if rErr = werror.WrapWithContextParams(ctx, focus.LoseFocusForNode(ctx, nodeInChain), "failed to lose focus for node in previous focus chain"); rErr != nil {
 					return
 				}
 			}
 		}
-		if rErr = focus.GainFocus(newFocusedNode.FocusNode); rErr != nil {
-			return
-		}
-		for _, s := range newFocusedNode.Chain {
-			if rErr = focus.GainFocus(s); rErr != nil {
+		if newFocusedNode != nil {
+			if rErr = werror.WrapWithContextParams(ctx, focus.GainFocusForScope(ctx, newFocusedNode.ParentScope), "failed to gain focus for new focus scope"); rErr != nil {
 				return
+			}
+			if rErr = werror.WrapWithContextParams(ctx, focus.GainPrimaryFocusForNode(ctx, newFocusedNode.FocusNode), "failed to gain primary focus for current focus node"); rErr != nil {
+				return
+			}
+			for _, s := range newFocusedNode.Chain {
+				if rErr = werror.WrapWithContextParams(ctx, focus.GainFocusForNode(ctx, s), "failed to gain focus for node in current focus chain"); rErr != nil {
+					return
+				}
 			}
 		}
 	}()

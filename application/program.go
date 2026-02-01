@@ -2,9 +2,11 @@ package application
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"time"
 
+	"github.com/calmdaysamuel/cheesecake/canvas"
 	"github.com/calmdaysamuel/cheesecake/constraints"
 	"github.com/calmdaysamuel/cheesecake/mouseactions"
 	"github.com/calmdaysamuel/cheesecake/tree"
@@ -12,9 +14,14 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	werror "github.com/palantir/witchcraft-go-error"
+	wparams "github.com/palantir/witchcraft-go-params"
 )
 
-type FrameTick struct {
+type Options struct {
+	FrameRate int
+}
+
+type RerenderMsg struct {
 	TickTime time.Time
 }
 
@@ -27,109 +34,74 @@ type Program struct {
 	Ctx              context.Context
 	rootRenderObject widget.RenderElement
 	constraints      tea.WindowSizeMsg
-	frameTime        time.Duration
 	oldMouseManagers []*mouseactions.Manager
-	LastError        error
 	FocusChain       []*tree.FocusNode
 	FocusedNode      *tree.FocusNode
+	LastError        error
 }
 
 func (p *Program) Init() tea.Cmd {
-	_, cmd := p.FrameStep()
-	return cmd
+	return nil
 }
 
 func (p *Program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	ctx := p.Ctx
+	ctx = wparams.ContextWithSafeParam(ctx, "receivedMessage", fmt.Sprintf("%T", msg))
 	switch msg := msg.(type) {
-	case FrameTick:
-		return p.FrameStep()
+	case RerenderMsg:
 	case tea.WindowSizeMsg:
 		p.constraints = msg
 	case tea.KeyMsg:
 		if msg.String() == "tab" {
-			p.FocusedNode, p.LastError = tree.FocusTreeStep(p.Ctx, p.FocusChain, p.FocusedNode, false, tree.FocusMoveForward)
+			p.FocusedNode, p.LastError = tree.FocusTreeStep(ctx, p.FocusChain, p.FocusedNode, false, tree.FocusMoveForward)
 			if p.LastError != nil {
 				return p, tea.Quit
 			}
 		} else if msg.String() == "shift+tab" {
-			p.FocusedNode, p.LastError = tree.FocusTreeStep(p.Ctx, p.FocusChain, p.FocusedNode, false, tree.FocusMoveBackward)
+			p.FocusedNode, p.LastError = tree.FocusTreeStep(ctx, p.FocusChain, p.FocusedNode, false, tree.FocusMoveBackward)
 			if p.LastError != nil {
 				return p, tea.Quit
 			}
+		} else {
+			if p.FocusedNode != nil && p.FocusedNode.KeyEventHandler != nil {
+				if err := p.FocusedNode.KeyEventHandler(ctx, msg); err != nil {
+					p.LastError = err
+					return p, tea.Quit
+				}
+			}
 		}
 	case tea.MouseMsg:
-		p.HandleMouseEvent(msg)
+		//p.HandleMouseEvent(msg)
 	}
 	return p, nil
 }
 
-func (p *Program) FrameStep() (tea.Model, tea.Cmd) {
-	startTime := time.Now()
-	defer func() { p.frameTime = time.Since(startTime) }()
-	p.LastError = tree.RefreshWidgetTree(p.Ctx, p.Tree)
-	if p.LastError != nil {
-		return p, tea.Quit
+func (p *Program) FrameStep() (shouldRerender bool, err error) {
+	ctx := p.Ctx
+	shouldRerender, err = tree.RefreshWidgetTree(ctx, p.Tree, false)
+	if err != nil {
+		return shouldRerender, err
 	}
-	p.rootRenderObject, p.LastError = tree.RootRenderObject(p.Ctx, p.Tree)
-	if p.LastError != nil {
-		return p, tea.Quit
+	if p.rootRenderObject, err = tree.RootRenderObject(ctx, p.Tree); err != nil {
+		return shouldRerender, err
 	}
-	p.LastError = p.HandleFocus()
-	if p.LastError != nil {
-		return p, tea.Quit
+
+	if err := p.HandleFocus(ctx); err != nil {
+		return shouldRerender, err
 	}
-	p.rootRenderObject.SetConstraints(constraints.Tight(p.constraints.Width, p.constraints.Height))
-	return p, TickAtFrameRate(p.FrameRate)
+	return shouldRerender, p.rootRenderObject.SetConstraints(ctx, constraints.Tight(p.constraints.Width, p.constraints.Height))
 }
 
-func (p *Program) HandleFocus() error {
-	p.FocusChain = tree.RefreshFocusTree(p.Ctx, p.Tree, nil)
+func (p *Program) HandleFocus(ctx context.Context) error {
+	p.FocusChain = tree.RefreshFocusTree(ctx, p.Tree, nil)
 	if p.FocusedNode == nil {
 		var err error
-		if p.FocusedNode, err = tree.FocusTreeStep(p.Ctx, p.FocusChain, nil, true, tree.FocusMoveForward); err != nil {
+		if p.FocusedNode, err = tree.FocusTreeStep(ctx, p.FocusChain, nil, true, tree.FocusMoveForward); err != nil {
 			return p.LastError
 		}
 	}
 	return nil
 }
-
-//func (p *Program) ForwardFocus() {
-//	p.focusChain = tree.RefreshFocusTree(p.Ctx, p.Tree)
-//	if len(p.focusChain) <= 0 {
-//		return
-//	}
-//	found := slices.IndexFunc(p.focusChain, func(element *focus.Element) bool {
-//		return element.InFocus()
-//	})
-//	if found != -1 {
-//		p.focusChain[found].LoseFocus()
-//	}
-//	found++
-//	if found < len(p.focusChain) {
-//		p.focusChain[found].GainLocus()
-//	} else {
-//		p.focusChain[0].GainLocus()
-//	}
-//}
-//
-//func (p *Program) BackwardFocus() {
-//	p.focusChain = tree.RefreshFocusTree(p.Ctx, p.Tree)
-//	if len(p.focusChain) <= 0 {
-//		return
-//	}
-//	found := slices.IndexFunc(p.focusChain, func(element *focus.Element) bool {
-//		return element.InFocus()
-//	})
-//	if found != -1 {
-//		p.focusChain[found].LoseFocus()
-//	}
-//	found--
-//	if found >= 0 {
-//		p.focusChain[found].GainLocus()
-//	} else {
-//		p.focusChain[len(p.focusChain)-1].GainLocus()
-//	}
-//}
 
 func (p *Program) View() string {
 	if p.rootRenderObject == nil {
@@ -137,21 +109,8 @@ func (p *Program) View() string {
 			BorderStyle(lipgloss.NormalBorder()).
 			Render("application is running but there is nothing to render")
 	}
-	return p.rootRenderObject.View().View()
+	return canvas.MergeTopLeft(canvas.New(p.constraints.Width, p.constraints.Height), p.rootRenderObject.View()).View()
 }
-
-//func (p *Program) HandleKeyEvent(msg tea.KeyMsg) {
-//	p.focusChain = tree.RefreshFocusTree(p.Ctx, p.Tree)
-//	if len(p.focusChain) <= 0 {
-//		return
-//	}
-//	found := slices.IndexFunc(p.focusChain, func(element *focus.Element) bool {
-//		return element.InFocus()
-//	})
-//	if found >= 0 {
-//		p.focusChain[found].OnKeyPressEvent(msg)
-//	}
-//}
 
 func (p *Program) HandleMouseEvent(msg tea.MouseMsg) {
 	if p.rootRenderObject != nil {
@@ -196,12 +155,6 @@ func (p *Program) HandleMouseEvent(msg tea.MouseMsg) {
 		}
 	}
 
-}
-
-func TickAtFrameRate(frameRate int64) tea.Cmd {
-	return tea.Tick(time.Second/time.Duration(frameRate), func(time.Time) tea.Msg {
-		return FrameTick{TickTime: time.Now()}
-	})
 }
 
 func NewProgram(ctx context.Context, root widget.Widget) (*Program, error) {

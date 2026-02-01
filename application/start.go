@@ -31,14 +31,40 @@ func Start(ctx context.Context, w widget.Widget) error {
 		return err
 	}
 	t := tea.NewProgram(program, tea.WithContext(ctx), tea.WithAltScreen(), tea.WithoutCatchPanics(), tea.WithMouseAllMotion())
+	go func() {
+		if err := runApplication(ctx, t, program); err != nil {
+			svc1log.FromContext(ctx).Info("Application stopped with unexpected error", svc1log.Stacktrace(err))
+		}
+	}()
+
 	if _, err := t.Run(); err != nil {
 		svc1log.FromContext(ctx).Error("application crashed or suddenly terminated.", svc1log.Stacktrace(err))
 		return err
 	}
+
 	if program.LastError != nil {
 		svc1log.FromContext(ctx).Error("application crashed with an unexpected error", svc1log.Stacktrace(program.LastError))
 		return program.LastError
 	}
 	svc1log.FromContext(ctx).Info("application closed without error.")
 	return nil
+}
+
+func runApplication(ctx context.Context, teaProgram *tea.Program, program *Program) error {
+	ticker := time.NewTicker(time.Second / 60)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case t := <-ticker.C:
+			shouldRerender, err := program.FrameStep()
+			if err != nil {
+				return err
+			}
+			if shouldRerender {
+				teaProgram.Send(RerenderMsg{TickTime: t})
+			}
+		}
+	}
 }

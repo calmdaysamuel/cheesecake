@@ -4,24 +4,13 @@ import (
 	"context"
 
 	"github.com/calmdaysamuel/cheesecake/application"
-	"github.com/calmdaysamuel/cheesecake/widget"
-	"github.com/calmdaysamuel/cheesecake/widgets/focus"
-	"github.com/calmdaysamuel/cheesecake/widgets/row"
-	"github.com/calmdaysamuel/cheesecake/widgets/text"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/calmdaysamuel/cheesecake/widgets/textfield"
 )
 
 func main() {
 	_ = application.Start(context.Background(),
-		focus.NewScope(func(ctx context.Context, hasFocus bool) (widget.Widget, error) {
-			return row.New([]widget.Widget{
-				focus.PrimaryFocusNode(func(ctx context.Context, hasFocus bool) (widget.Widget, error) {
-					return text.New("hello world\n780", text.WithTextStyle(lipgloss.NewStyle().Background(lipgloss.Color(boolToIntString(hasFocus))))), nil
-				}),
-				focus.PrimaryFocusNode(func(ctx context.Context, hasFocus bool) (widget.Widget, error) {
-					return text.New("hello world\n780", text.WithTextStyle(lipgloss.NewStyle().Background(lipgloss.Color(boolToIntString(hasFocus))))), nil
-				}),
-			}), nil
+		textfield.New(func(options *textfield.Options) {
+			options.Placeholder = "Type something..."
 		}),
 	)
 }

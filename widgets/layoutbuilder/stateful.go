@@ -4,44 +4,50 @@ import (
 	"context"
 
 	"github.com/calmdaysamuel/cheesecake/constraints"
-	"github.com/calmdaysamuel/cheesecake/random"
+	"github.com/calmdaysamuel/cheesecake/state"
 	"github.com/calmdaysamuel/cheesecake/widget"
+	"github.com/calmdaysamuel/cheesecake/widgetcontext"
+	werror "github.com/palantir/witchcraft-go-error"
 )
 
 var _ widget.StatefulWidget = &StatefulModel{}
 
 type StatefulModel struct {
-	ChildFunc func(constraints constraints.Constraints) widget.Widget
+	ChildFunc func(box constraints.Constraints) (widget.Widget, error)
 }
 
 type State struct {
-	ID              string
 	LastConstraints constraints.Constraints
 }
 
-func (s *State) Identifier() string {
-	return s.ID
+func (m *StatefulModel) CreateState(ctx context.Context) (state.State, error) {
+	return state.New(State{})
 }
 
-func (s *State) Init() {}
-
-func (s *State) Dispose() {}
-
-func (m *StatefulModel) State() widget.State {
-	return &State{ID: random.ID()}
-}
-
-func (m *StatefulModel) Build(ctx context.Context, element widget.State) widget.Widget {
-	state := element.(*State)
-	return &Model{
-		ChildFunc:       m.ChildFunc,
-		LastConstraints: state.LastConstraints,
-		ConstraintsListener: func(c constraints.Constraints) {
-			state.LastConstraints = c
-		},
+func (m *StatefulModel) Build(ctx context.Context, wcontext widgetcontext.Context, element state.State) (widget.Widget, error) {
+	currentVal, err := state.Current[State](element)
+	if err != nil {
+		return nil, err
 	}
+	w, err := m.ChildFunc(currentVal.LastConstraints)
+	if err != nil {
+		return nil, werror.WrapWithContextParams(ctx, err, "failed to create widget from childFunc in layout builder.")
+	}
+	if w == nil {
+		return nil, werror.ErrorWithContextParams(ctx, "failed to create widget from childFunc in layout builder. child is nil")
+	}
+	return &Model{
+		Child:           w,
+		LastConstraints: currentVal.LastConstraints,
+		ConstraintsListener: func(c constraints.Constraints) error {
+			if c == currentVal.LastConstraints {
+				return nil // constraints must change to trigger widget rebuild
+			}
+			return state.Update(element, State{LastConstraints: c})
+		},
+	}, nil
 }
 
-func New(childFunc func(constraints constraints.Constraints) widget.Widget) *StatefulModel {
+func New(childFunc func(box constraints.Constraints) (widget.Widget, error)) *StatefulModel {
 	return &StatefulModel{ChildFunc: childFunc}
 }

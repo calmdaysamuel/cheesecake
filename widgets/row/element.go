@@ -1,6 +1,8 @@
 package row
 
 import (
+	"context"
+
 	"github.com/calmdaysamuel/cheesecake/canvas"
 	"github.com/calmdaysamuel/cheesecake/constraints"
 	"github.com/calmdaysamuel/cheesecake/mouseactions"
@@ -38,19 +40,19 @@ func (e *Element) ClearChildren() {
 	e.renderObjectChildren = nil
 }
 
-func (e *Element) DirectDescendants() []widget.Widget {
-	return e.parentWidget.Children
+func (e *Element) DirectDescendants(ctx context.Context) ([]widget.Widget, error) {
+	return e.parentWidget.Children, nil
 }
 
 func (e *Element) View() canvas.Canvas {
-	childrenViews := []canvas.Canvas{}
+	var childrenViews []canvas.Canvas
 	for _, child := range e.renderObjectChildren {
 		childrenViews = append(childrenViews, child.View())
 	}
 	return canvas.AddMouseActionManager(canvas.Truncate(canvas.MergeTopLeft(canvas.NewWithCell(e.Width, e.Height, canvas.DefaultCellWithBgColor(string(e.parentWidget.BgColor))), canvas.JoinHorizontal(e.parentWidget.MainAxisAlignment, childrenViews...)), e.MaxWidth, e.MaxHeight), e.Manager)
 }
 
-func (e *Element) SetConstraints(constraints constraints.Constraints) {
+func (e *Element) SetConstraints(ctx context.Context, constraints constraints.Constraints) error {
 	e.Constraints = constraints
 	totalFlex := 0.0
 	for _, child := range e.renderObjectChildren {
@@ -71,7 +73,9 @@ func (e *Element) SetConstraints(constraints constraints.Constraints) {
 				continue
 			}
 		}
-		child.SetConstraints(constraints)
+		if err := child.SetConstraints(ctx, constraints); err != nil {
+			return err
+		}
 		remainingWidth -= child.GetSize().Width
 	}
 
@@ -81,7 +85,9 @@ func (e *Element) SetConstraints(constraints constraints.Constraints) {
 			if horizontal > 0 {
 				cnst := constraints
 				cnst.MaxWidth = int(float64(horizontal) / totalFlex * float64(remainingWidth))
-				child.SetConstraints(cnst)
+				if err := child.SetConstraints(ctx, cnst); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -92,4 +98,5 @@ func (e *Element) SetConstraints(constraints constraints.Constraints) {
 		e.Height = max(childSize.Height, e.Height)
 		e.Width += childSize.Width
 	}
+	return nil
 }

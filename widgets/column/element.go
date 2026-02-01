@@ -1,6 +1,8 @@
 package column
 
 import (
+	"context"
+
 	"github.com/calmdaysamuel/cheesecake/canvas"
 	"github.com/calmdaysamuel/cheesecake/constraints"
 	"github.com/calmdaysamuel/cheesecake/mouseactions"
@@ -38,8 +40,8 @@ func (e *Element) ClearChildren() {
 	e.renderObjectChildren = nil
 }
 
-func (e *Element) DirectDescendants() []widget.Widget {
-	return e.parentWidget.children
+func (e *Element) DirectDescendants(ctx context.Context) ([]widget.Widget, error) {
+	return e.parentWidget.children, nil
 }
 
 func (e *Element) View() canvas.Canvas {
@@ -50,7 +52,7 @@ func (e *Element) View() canvas.Canvas {
 	return canvas.AddMouseActionManager(canvas.Truncate(canvas.MergeTopLeft(canvas.NewWithCell(e.Width, e.Height, canvas.DefaultCellWithBgColor(string(e.parentWidget.BgColor))), canvas.JoinVertical(e.parentWidget.mainAxisAlignment, childrenViews...)), e.MaxWidth, e.MaxHeight), e.Manager)
 }
 
-func (e *Element) SetConstraints(constraints constraints.Constraints) {
+func (e *Element) SetConstraints(ctx context.Context, constraints constraints.Constraints) error {
 	e.Constraints = constraints
 	totalFlex := 0.0
 	for _, child := range e.renderObjectChildren {
@@ -71,7 +73,9 @@ func (e *Element) SetConstraints(constraints constraints.Constraints) {
 				continue
 			}
 		}
-		child.SetConstraints(constraints)
+		if err := child.SetConstraints(ctx, constraints); err != nil {
+			return nil
+		}
 		remainingHeight -= child.GetSize().Height
 	}
 
@@ -81,7 +85,9 @@ func (e *Element) SetConstraints(constraints constraints.Constraints) {
 			if vertical > 0 {
 				cnst := constraints
 				cnst.MaxHeight = int((float64(vertical) / totalFlex) * float64(remainingHeight))
-				child.SetConstraints(cnst)
+				if err := child.SetConstraints(ctx, cnst); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -92,4 +98,5 @@ func (e *Element) SetConstraints(constraints constraints.Constraints) {
 		e.Width = max(childSize.Width, e.Width)
 		e.Height += childSize.Height
 	}
+	return nil
 }

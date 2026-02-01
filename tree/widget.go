@@ -57,36 +57,45 @@ func (n *Node) IsSameType(other *Node) bool {
 	return false
 }
 
-func RefreshWidgetTree(ctx context.Context, root *Node) error {
+func RefreshWidgetTree(ctx context.Context, root *Node, subtreeDirty bool) (shouldRerender bool, err error) {
 	if root == nil {
-		return nil
+		return false, nil
 	}
-
 	switch root.Type() {
 	case StatefulWidgetType:
 		ctx = wparams.ContextWithSafeParam(ctx, "nodeType", StatefulWidgetType)
 		sw := root.Stateful
 		isDirty, err := state.IsDirty(sw.State)
 		if err != nil {
-			return werror.ErrorWithContextParams(ctx, "failed to check if stateful widget is dirty")
+			return false, werror.WrapWithContextParams(ctx, err, "failed to check if stateful widget is dirty")
 		}
 		ctx = wparams.ContextWithSafeParam(ctx, "isDirty", isDirty)
+		if isDirty {
+			subtreeDirty = true
+		}
 		switch {
-		case sw.Child == nil || isDirty:
+		case sw.Child == nil || isDirty || subtreeDirty:
 			oldChild := sw.Child
 			newChild, err := sw.Widget.Build(ctx, nil, sw.State)
 			if err != nil {
-				return werror.WrapWithContextParams(ctx, err, "failed to build stateful widget")
+				return false, werror.WrapWithContextParams(ctx, err, "failed to build stateful widget")
 			}
 			switch n := newChild.(type) {
 			case widget.StatefulWidget:
-				if oldChild == nil {
-					oldChild = &Node{Stateful: &StatefulNode{}}
+				var preferredChild *Node
+				if oldChild != nil {
+					if oldChild.Stateful != nil {
+						preferredChild = oldChild.Stateful.Child
+					} else if oldChild.RenderWidget != nil {
+						if len(oldChild.RenderWidget.Children) == 1 {
+							preferredChild = oldChild.RenderWidget.Children[0]
+						}
+					}
 				}
 				sw.Child = &Node{
 					Stateful: &StatefulNode{
 						Widget: n,
-						Child:  oldChild.Stateful.Child,
+						Child:  preferredChild,
 					},
 				}
 				if sw.Child.IsSameType(oldChild) {
@@ -94,37 +103,52 @@ func RefreshWidgetTree(ctx context.Context, root *Node) error {
 				} else {
 					sw.Child.Stateful.State, err = sw.Child.Stateful.Widget.CreateState(ctx)
 					if err != nil {
-						return werror.WrapWithContextParams(ctx, err, "failed to create state")
+						return false, werror.WrapWithContextParams(ctx, err, "failed to create state")
 					}
 				}
 			case widget.RenderWidget:
-				if oldChild == nil {
-					oldChild = &Node{RenderWidget: &RenderNode{}}
+				var preferredChildren []*Node
+				if oldChild != nil {
+					if oldChild.Stateful != nil && oldChild.Stateful.Child != nil {
+						preferredChildren = []*Node{oldChild.Stateful.Child}
+					} else if oldChild.RenderWidget != nil {
+						preferredChildren = oldChild.RenderWidget.Children
+					}
 				}
 				sw.Child = &Node{
 					RenderWidget: &RenderNode{
 						Widget:   n,
-						Children: oldChild.RenderWidget.Children,
+						Children: preferredChildren,
 					},
 				}
 			default:
-				return errors.New("tree.RefreshWidgetTree: child widget type not recognized")
+				return false, errors.New("tree.RefreshWidgetTree: child widget type not recognized")
 			}
-			if err := RefreshWidgetTree(ctx, sw.Child); err != nil {
-				return werror.ErrorWithContextParams(ctx, "failed to refresh widget subtree")
+			shouldRerenderChild, err := RefreshWidgetTree(ctx, sw.Child, subtreeDirty)
+			if err != nil {
+				return false, werror.ErrorWithContextParams(ctx, "failed to refresh widget subtree")
 			}
+			subtreeDirty = shouldRerenderChild || subtreeDirty
 			if err := state.Clean(sw.State); err != nil {
-				return werror.ErrorWithContextParams(ctx, "failed to clean state")
+				return false, werror.ErrorWithContextParams(ctx, "failed to clean state")
 			}
 		default:
-			return nil
+			shouldRerenderChild, err := RefreshWidgetTree(ctx, sw.Child, subtreeDirty)
+			if err != nil {
+				return false, werror.ErrorWithContextParams(ctx, "failed to refresh widget subtree")
+			}
+			return shouldRerenderChild || subtreeDirty, nil
 		}
 	case RenderWidgetType:
 		ctx = wparams.ContextWithSafeParam(ctx, "nodeType", RenderWidgetType)
 		root.RenderWidget.Element = root.RenderWidget.Widget.Element()
 		oldChildren := root.RenderWidget.Children
 		root.RenderWidget.Children = nil
-		for i, child := range root.RenderWidget.Element.DirectDescendants() {
+		descendants, err := root.RenderWidget.Element.DirectDescendants(ctx)
+		if err != nil {
+			return false, werror.WrapWithContextParams(ctx, err, "failed to compute descendant for widget")
+		}
+		for i, child := range descendants {
 			switch child := child.(type) {
 			case widget.StatefulWidget:
 				node := &Node{
@@ -142,12 +166,14 @@ func RefreshWidgetTree(ctx context.Context, root *Node) error {
 					var err error
 					node.Stateful.State, err = node.Stateful.Widget.CreateState(ctx)
 					if err != nil {
-						return err
+						return false, err
 					}
 				}
 				root.RenderWidget.Children = append(root.RenderWidget.Children, node)
-				if err := RefreshWidgetTree(ctx, node); err != nil {
-					return werror.ErrorWithContextParams(ctx, "failed to refresh widget subtree")
+				shouldRerenderChild, err := RefreshWidgetTree(ctx, node, subtreeDirty)
+				subtreeDirty = shouldRerenderChild || subtreeDirty
+				if err != nil {
+					return false, werror.ErrorWithContextParams(ctx, "failed to refresh widget subtree")
 				}
 			case widget.RenderWidget:
 				node := &Node{
@@ -156,37 +182,47 @@ func RefreshWidgetTree(ctx context.Context, root *Node) error {
 					},
 				}
 				if i < len(oldChildren) {
-					if node.IsSameType(oldChildren[i]) {
+					if oldChildren[i].RenderWidget != nil {
 						node.RenderWidget.Children = oldChildren[i].RenderWidget.Children
+					} else if oldChildren[i].Stateful != nil {
+						node.RenderWidget.Children = []*Node{oldChildren[i].Stateful.Child}
 					}
 				}
 				root.RenderWidget.Children = append(root.RenderWidget.Children, node)
-				if err := RefreshWidgetTree(ctx, node); err != nil {
-					return werror.ErrorWithContextParams(ctx, "failed to refresh widget subtree")
+				shouldRerenderChild, err := RefreshWidgetTree(ctx, node, subtreeDirty)
+				subtreeDirty = shouldRerenderChild || subtreeDirty
+				if err != nil {
+					return false, werror.ErrorWithContextParams(ctx, "failed to refresh widget subtree")
 				}
 			default:
-				return werror.ErrorWithContextParams(ctx, "child widget type of recognized")
+				return false, werror.ErrorWithContextParams(ctx, "child widget type of recognized")
 			}
 		}
 	default:
 		ctx = wparams.ContextWithSafeParam(ctx, "nodeType", UnknownWidgetType)
-		return werror.ErrorWithContextParams(ctx, "unknown widget type provided to the widget tree refresher")
+		return false, werror.ErrorWithContextParams(ctx, "unknown widget type provided to the widget tree refresher")
 	}
-	return nil
+	return subtreeDirty, nil
 }
 
 func NodeFromWidget(ctx context.Context, root widget.Widget) (*Node, error) {
 	switch c := root.(type) {
 	case widget.StatefulWidget:
+		s, err := c.CreateState(ctx)
+		if err != nil {
+			return nil, werror.WrapWithContextParams(ctx, err, "failed to initialize first application state")
+		}
 		return &Node{
 			Stateful: &StatefulNode{
 				Widget: c,
+				State:  s,
 			},
 		}, nil
 	case widget.RenderWidget:
 		return &Node{
 			RenderWidget: &RenderNode{
-				Widget: c,
+				Widget:  c,
+				Element: c.Element(),
 			},
 		}, nil
 	}

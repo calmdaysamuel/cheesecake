@@ -1,6 +1,8 @@
 package stack
 
 import (
+	"context"
+
 	"github.com/calmdaysamuel/cheesecake/canvas"
 	"github.com/calmdaysamuel/cheesecake/constraints"
 	"github.com/calmdaysamuel/cheesecake/mouseactions"
@@ -38,8 +40,8 @@ func (e *Element) ClearChildren() {
 	e.renderObjectChildren = nil
 }
 
-func (e *Element) DirectDescendants() []widget.Widget {
-	return e.parentWidget.Children
+func (e *Element) DirectDescendants(ctx context.Context) ([]widget.Widget, error) {
+	return e.parentWidget.Children, nil
 }
 
 func (e *Element) View() canvas.Canvas {
@@ -50,10 +52,12 @@ func (e *Element) View() canvas.Canvas {
 	return canvas.AddMouseActionManager(canvas.MergeWithMouseManager(e.parentWidget.VerticalAlignment, e.parentWidget.HorizontalAlignment, false, childrenViews...), e.Manager)
 }
 
-func (e *Element) SetConstraints(constraints constraints.Constraints) {
+func (e *Element) SetConstraints(ctx context.Context, constraints constraints.Constraints) error {
 	e.Constraints = constraints
 	for _, child := range e.renderObjectChildren {
-		child.SetConstraints(constraints)
+		if err := child.SetConstraints(ctx, constraints); err != nil {
+			return err
+		}
 	}
 
 	e.Width, e.Height = 0, 0
@@ -62,4 +66,5 @@ func (e *Element) SetConstraints(constraints constraints.Constraints) {
 		e.Width = max(childSize.Width, e.Width)
 		e.Height = max(childSize.Height, e.Height)
 	}
+	return nil
 }

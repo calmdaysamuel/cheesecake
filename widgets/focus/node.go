@@ -6,13 +6,21 @@ import (
 	"github.com/calmdaysamuel/cheesecake/state"
 	"github.com/calmdaysamuel/cheesecake/widget"
 	"github.com/calmdaysamuel/cheesecake/widgetcontext"
+	tea "github.com/charmbracelet/bubbletea"
 	werror "github.com/palantir/witchcraft-go-error"
 )
 
 var _ widget.StatefulWidget = &Node{}
 
+type Option func(*Options)
+type KeyEventHandler func(ctx context.Context, msg tea.KeyMsg) error
+type Options struct {
+	KeyEventHandler KeyEventHandler
+}
+
 type Node struct {
-	Child func(ctx context.Context, hasFocus bool) (widget.Widget, error)
+	Child   func(ctx context.Context, hasFocus bool, hasPrimaryFocus bool) (widget.Widget, error)
+	Options Options
 }
 
 func (n *Node) CreateState(ctx context.Context) (state.State, error) {
@@ -24,29 +32,20 @@ func (n *Node) Build(ctx context.Context, widgetContext widgetcontext.Context, w
 	if err != nil {
 		return nil, werror.WrapWithContextParams(ctx, err, "failed to deserialize state object")
 	}
-	return n.Child(ctx, curVal.InFocus)
+	return n.Child(ctx, curVal.InFocus, curVal.HasPrimaryFocus)
 }
 
 type NodeState struct {
-	InFocus bool
+	InFocus         bool
+	HasPrimaryFocus bool
 }
 
-func PrimaryFocusNode(ChildFunc func(ctx context.Context, hasFocus bool) (widget.Widget, error)) widget.Widget {
-	return &Node{
+func NewNode(ChildFunc func(ctx context.Context, hasFocus bool, hasPrimaryFocus bool) (widget.Widget, error), options ...Option) widget.Widget {
+	n := &Node{
 		Child: ChildFunc,
 	}
-}
-
-func GainFocus(s state.State) error {
-	if err := state.Update(s, NodeState{InFocus: true}); err != nil {
-		return state.Update(s, ScopeState{InFocus: true})
+	for _, option := range options {
+		option(&n.Options)
 	}
-	return nil
-}
-
-func LoseFocus(s state.State) error {
-	if err := state.Update(s, NodeState{InFocus: false}); err != nil {
-		return state.Update(s, ScopeState{InFocus: false})
-	}
-	return nil
+	return n
 }

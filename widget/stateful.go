@@ -9,6 +9,6 @@ import (
 
 type StatefulWidget interface {
 	Widget
-	CreateState(ctx context.Context) (state.State, error)
+	CreateState(ctx context.Context) (s state.State, err error)
 	Build(ctx context.Context, widgetContext widgetcontext.Context, widgetState state.State) (Widget, error)
 }

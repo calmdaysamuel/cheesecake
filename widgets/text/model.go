@@ -9,45 +9,38 @@ import (
 
 var _ widget.RenderWidget = &Model{}
 
-type Option func(*Model)
+type Option func(*Options)
+type Options struct {
+	ForegroundColor lipgloss.Color
+	BackgroundColor lipgloss.Color
+	Alignment       lipgloss.Position
+	Bold            bool
+	Faint           bool
+	Underline       bool
+	UnderlineSpaces bool
+	Italic          bool
+	ShouldWrap      bool
+}
 
 type Model struct {
-	Text      string
-	style     lipgloss.Style
-	styleFunc func(idx int, char rune) *lipgloss.Style
+	Text    string
+	Options Options
 	*mouseactions.Manager
 }
 
 func (m *Model) Element() widget.RenderElement {
 	return &Element{
-		parentWidget: m,
-		ID:           random.ID(),
-		Manager:      m.Manager,
+		ID:      random.ID(),
+		Manager: m.Manager,
+		options: m.Options,
+		text:    m.Text,
 	}
 }
 
-func New(text string, options ...Option) *Model {
+func New(text string, options ...Option) widget.Widget {
 	m := &Model{Text: text}
 	for _, option := range options {
-		option(m)
+		option(&m.Options)
 	}
-	m.style = m.style.UnsetMargins().UnsetBorderStyle().UnsetPadding()
 	return m
-}
-
-func WithTextStyle(s lipgloss.Style) Option {
-	return func(model *Model) {
-		model.style = s
-	}
-}
-func WithTextStyleFunc(styleFunc func(idx int, char rune) *lipgloss.Style) Option {
-	return func(model *Model) {
-		model.styleFunc = styleFunc
-	}
-}
-
-func WithMouseActions(m *mouseactions.Manager) Option {
-	return func(model *Model) {
-		model.Manager = m
-	}
 }

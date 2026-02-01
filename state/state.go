@@ -2,6 +2,7 @@ package state
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/calmdaysamuel/cheesecake/random"
 )
@@ -9,16 +10,22 @@ import (
 type State interface {
 	_unimplementable()
 	ID() string
+	Type() string
 }
 
 type state struct {
-	current interface{}
-	dirty   bool
-	id      string
+	current   interface{}
+	dirty     bool
+	id        string
+	stateType string
 }
 
 func (s *state) ID() string {
 	return s.id
+}
+
+func (s *state) Type() string {
+	return s.stateType
 }
 
 func (s *state) _unimplementable() {}
@@ -26,9 +33,10 @@ func (s *state) _unimplementable() {}
 // New creates a new state object for your widget. The default state cannot be nil.
 func New[T any](val T) (State, error) {
 	return &state{
-		current: val,
-		dirty:   true,
-		id:      random.ID(),
+		current:   val,
+		dirty:     true,
+		id:        random.ID(),
+		stateType: fmt.Sprintf("%T", val),
 	}, nil
 }
 
@@ -37,12 +45,12 @@ func Current[T any](s State) (val T, err error) {
 	typedState, ok := s.(*state)
 	if !ok {
 		var noop T
-		return noop, errors.New("state.CreateState: state object not recognized")
+		return noop, errors.New("state.Current: state object not recognized")
 	}
 	typedValue, ok := typedState.current.(T)
 	if !ok {
 		var noop T
-		return noop, errors.New("state.CreateState: state object does not match request type")
+		return noop, errors.New("state.Current: state object does not match request type")
 	}
 	return typedValue, nil
 }
@@ -52,11 +60,11 @@ func Current[T any](s State) (val T, err error) {
 func Update[T any](s State, newValue T) (err error) {
 	typedState, ok := s.(*state)
 	if !ok {
-		return errors.New("state.CreateState: state object not recognized")
+		return errors.New("state.Update: state object not recognized")
 	}
 	_, ok = typedState.current.(T)
 	if !ok {
-		return errors.New("state.CreateState: state object does not match request type")
+		return errors.New("state.Update: state object does not match request type")
 	}
 	typedState.current = newValue
 	typedState.dirty = true
@@ -65,9 +73,12 @@ func Update[T any](s State, newValue T) (err error) {
 
 // IsDirty returns true if the state object is considered dirty
 func IsDirty(s State) (isDirty bool, err error) {
+	if s == nil {
+		return false, errors.New("provided state object is nil")
+	}
 	typedState, ok := s.(*state)
 	if !ok {
-		return false, errors.New("state.CreateState: state object not recognized")
+		return false, errors.New("state.IsDirty: state object not recognized")
 	}
 	return typedState.dirty, nil
 }
@@ -76,7 +87,17 @@ func IsDirty(s State) (isDirty bool, err error) {
 func Clean(s State) error {
 	typedState, ok := s.(*state)
 	if !ok {
-		return errors.New("state.CreateState: state object not recognized")
+		return errors.New("state.Clean: state object not recognized")
+	}
+	typedState.dirty = false
+	return nil
+}
+
+// MarkDirty marks the state object as dirty.
+func MarkDirty(s State) error {
+	typedState, ok := s.(*state)
+	if !ok {
+		return errors.New("state.MarkDirty: state object not recognized")
 	}
 	typedState.dirty = true
 	return nil

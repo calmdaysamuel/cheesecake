@@ -11,15 +11,15 @@ var _ widget.RenderWidget = &Model{}
 type Option func(*Model)
 
 type Model struct {
-	ChildFunc           func(constraints constraints.Constraints) widget.Widget
 	LastConstraints     constraints.Constraints
-	ConstraintsListener func(constraints.Constraints)
+	ConstraintsListener func(c constraints.Constraints) error
+	Child               widget.Widget
 }
 
 func (m *Model) Element() widget.RenderElement {
 	return &Element{
 		ID:                  random.ID(),
-		ChildFunc:           m.ChildFunc,
+		Child:               m.Child,
 		LastConstraints:     m.LastConstraints,
 		ConstraintsListener: m.ConstraintsListener,
 	}
