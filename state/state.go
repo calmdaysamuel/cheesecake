@@ -1,12 +1,18 @@
 package state
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
 	"github.com/calmdaysamuel/cheesecake/random"
 )
 
+type Options struct {
+	CleanUpFunc func(ctx context.Context) error
+}
+
+type Option func(options *Options)
 type State interface {
 	_unimplementable()
 	ID() string
@@ -18,6 +24,7 @@ type state struct {
 	dirty     bool
 	id        string
 	stateType string
+	options   Options
 }
 
 func (s *state) ID() string {
@@ -31,13 +38,19 @@ func (s *state) Type() string {
 func (s *state) _unimplementable() {}
 
 // New creates a new state object for your widget. The default state cannot be nil.
-func New[T any](val T) (State, error) {
-	return &state{
+func New[T any](val T, options ...Option) (State, error) {
+	s := &state{
 		current:   val,
 		dirty:     true,
 		id:        random.ID(),
 		stateType: fmt.Sprintf("%T", val),
-	}, nil
+		options:   Options{},
+	}
+
+	for _, option := range options {
+		option(&s.options)
+	}
+	return s, nil
 }
 
 // Current returns the current value stored in this state object
@@ -109,6 +122,13 @@ func Init(s State) error {
 }
 
 // Dispose cleans up resources used by the state object
-func Dispose(s State) error {
+func Dispose(ctx context.Context, s State) error {
+	typedState, ok := s.(*state)
+	if !ok {
+		return errors.New("state.Dispose: state object not recognized")
+	}
+	if typedState.options.CleanUpFunc != nil {
+		return typedState.options.CleanUpFunc(ctx)
+	}
 	return nil
 }

@@ -1,12 +1,12 @@
 package spacer
 
 import (
+	"context"
+
 	"github.com/calmdaysamuel/cheesecake/canvas"
 	"github.com/calmdaysamuel/cheesecake/constraints"
-	"github.com/calmdaysamuel/cheesecake/mouseactions"
 	"github.com/calmdaysamuel/cheesecake/size"
 	"github.com/calmdaysamuel/cheesecake/widget"
-	"github.com/charmbracelet/lipgloss"
 )
 
 var _ widget.RenderElement = &Element{}
@@ -14,11 +14,11 @@ var _ widget.Flexible = &Element{}
 
 type Element struct {
 	ID      string
+	Options Options
+
 	spacing canvas.Canvas
 	flex    int
 	size.Size
-	*mouseactions.Manager
-	BgColor lipgloss.Color
 }
 
 func (e *Element) Flex() (int, int) {
@@ -36,13 +36,14 @@ func (e *Element) AdoptChild(child widget.RenderElement) {}
 
 func (e *Element) ClearChildren() {}
 
-func (e *Element) DirectDescendants() []widget.Widget { return nil }
+func (e *Element) DirectDescendants(ctx context.Context) ([]widget.Widget, error) { return nil, nil }
 
 func (e *Element) View() canvas.Canvas {
 	return e.spacing
 }
 
-func (e *Element) SetConstraints(constraints constraints.Constraints) {
-	e.spacing = canvas.AddMouseActionManager(canvas.NewWithCell(constraints.MaxWidth, constraints.MaxHeight, canvas.DefaultCellWithBgColor(string(e.BgColor))), e.Manager)
+func (e *Element) SetConstraints(ctx context.Context, constraints constraints.Constraints) error {
+	e.spacing = canvas.NewWithCell(constraints.MaxWidth, constraints.MaxHeight, canvas.DefaultCellWithBgColor(string(e.Options.BackgroundColor)))
 	e.Width, e.Height = canvas.Size(e.spacing)
+	return nil
 }

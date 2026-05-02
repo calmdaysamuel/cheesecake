@@ -1,7 +1,10 @@
 package stack
 
 import (
-	"github.com/calmdaysamuel/cheesecake/mouseactions"
+	"slices"
+
+	"github.com/calmdaysamuel/cheesecake/crossaxis"
+	"github.com/calmdaysamuel/cheesecake/mainaxis"
 	"github.com/calmdaysamuel/cheesecake/random"
 	"github.com/calmdaysamuel/cheesecake/widget"
 	"github.com/charmbracelet/lipgloss"
@@ -9,49 +12,36 @@ import (
 
 var _ widget.RenderWidget = &Model{}
 
-type Option func(*Model)
+type Option func(*Options)
+type Options struct {
+	CrossAxisAlignment crossaxis.Alignment
+	MainAxisAlignment  mainaxis.Alignment
+	BackgroundColor    lipgloss.Color
+	ReverseChildren    bool
+}
 
 type Model struct {
-	Style               lipgloss.Style
-	Children            []widget.Widget
-	HorizontalAlignment lipgloss.Position
-	VerticalAlignment   lipgloss.Position
-	*mouseactions.Manager
-	BgColor lipgloss.Color
+	Children []widget.Widget
+	Options  Options
 }
 
 func (m *Model) Element() widget.RenderElement {
 	return &Element{
-		parentWidget: m,
-		ID:           random.ID(),
-		Manager:      m.Manager,
+		Children: m.Children,
+		ID:       random.ID(),
+		Options:  m.Options,
 	}
 }
 
 func New(children []widget.Widget, options ...Option) *Model {
-	m := &Model{
-		Children: children,
-	}
+	m := &Model{}
 	for _, option := range options {
-		option(m)
+		option(&m.Options)
 	}
+
+	if m.Options.ReverseChildren {
+		slices.Reverse(children)
+	}
+	m.Children = children
 	return m
-}
-
-func WithVerticalAlignment(position lipgloss.Position) Option {
-	return func(model *Model) {
-		model.VerticalAlignment = position
-	}
-}
-
-func WithHorizontalAlignment(position lipgloss.Position) Option {
-	return func(model *Model) {
-		model.HorizontalAlignment = position
-	}
-}
-
-func WithMouseActions(m *mouseactions.Manager) Option {
-	return func(model *Model) {
-		model.Manager = m
-	}
 }

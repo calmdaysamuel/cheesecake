@@ -1,21 +1,23 @@
 package canvas
 
 import (
+	"github.com/calmdaysamuel/cheesecake/size"
 	"slices"
 	"strings"
 
-	"github.com/calmdaysamuel/cheesecake/mouseactions"
+	"github.com/calmdaysamuel/cheesecake/state"
 	"github.com/charmbracelet/lipgloss"
 )
 
 type Canvas []Row
 
-func Size(canvas Canvas) (width, height int) {
-	height = len(canvas)
+func Size(canvas Canvas) size.Size {
+	height := len(canvas)
+	width := 0
 	if height > 0 {
 		width = len(canvas[0])
 	}
-	return width, height
+	return size.Size{Width: width, Height: height}
 }
 
 func MergeCenter(canvases ...Canvas) Canvas {
@@ -90,7 +92,12 @@ func MergeWithMouseManager(verticalPosition, horizontalPosition lipgloss.Positio
 					cellCopy.BgColor = mergedCanvas[j][k].BgColor
 				}
 				if mergeMouseManager {
-					cellCopy.ActionManagers = append(cellCopy.ActionManagers, mergedCanvas[j][k].ActionManagers...)
+					if cellCopy.RelativePositioning == nil {
+						cellCopy.RelativePositioning = make(map[string]CellRelativePosition)
+					}
+					for s, position := range mergedCanvas[j][k].RelativePositioning {
+						cellCopy.RelativePositioning[s] = position
+					}
 				}
 				mergedCanvas[j][k] = cellCopy
 			}
@@ -121,7 +128,12 @@ func JoinVertical(horizontalPosition lipgloss.Position, canvases ...Canvas) Canv
 					continue
 				}
 				oldCell := mergedCanvas[j][k]
-				cell.ActionManagers = append(cell.ActionManagers, oldCell.ActionManagers...)
+				if cell.RelativePositioning == nil {
+					cell.RelativePositioning = make(map[string]CellRelativePosition)
+				}
+				for s, position := range oldCell.RelativePositioning {
+					cell.RelativePositioning[s] = position
+				}
 				mergedCanvas[j][k] = cell
 			}
 			j++
@@ -160,7 +172,12 @@ func JoinHorizontal(verticalPosition lipgloss.Position, canvases ...Canvas) Canv
 				if cell.Transparent {
 					continue
 				}
-				cell.ActionManagers = append(cell.ActionManagers, oldCell.ActionManagers...)
+				if cell.RelativePositioning == nil {
+					cell.RelativePositioning = make(map[string]CellRelativePosition)
+				}
+				for s, position := range oldCell.RelativePositioning {
+					cell.RelativePositioning[s] = position
+				}
 				mergedCanvas[j][k+offset] = cell
 			}
 		}
@@ -317,10 +334,18 @@ func (c Canvas) View() string {
 	return strings.Join(lines, "\n")
 }
 
-func AddMouseActionManager(c Canvas, manager ...*mouseactions.Manager) Canvas {
+func UpdateRelativePosition(c Canvas, mouseRegionState state.State, options MouseOptions) Canvas {
 	for i, row := range c {
 		for j, cell := range row {
-			cell.ActionManagers = append(cell.ActionManagers, manager...)
+			if cell.RelativePositioning == nil {
+				cell.RelativePositioning = make(map[string]CellRelativePosition)
+			}
+			cell.RelativePositioning[mouseRegionState.ID()] = CellRelativePosition{
+				X:      i,
+				Y:      j,
+				State:  mouseRegionState,
+				Region: options,
+			}
 			c[i][j] = cell
 		}
 	}

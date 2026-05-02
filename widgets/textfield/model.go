@@ -3,6 +3,7 @@ package textfield
 import (
 	"context"
 	"strings"
+	"time"
 
 	"github.com/calmdaysamuel/cheesecake/constraints"
 	"github.com/calmdaysamuel/cheesecake/state"
@@ -21,20 +22,51 @@ var _ widget.StatefulWidget = &Model{}
 type Option func(*Options)
 
 type Options struct {
-	Placeholder string
+	Placeholder      string
+	PlaceholderStyle text.Option
+	TextStyle        text.Option
+	CursorStyle      text.Option
 }
+
 type State struct {
-	Value          string
-	CursorPosition int
-	WindowStart    int
-	WindowEnd      int
+	Value                    string
+	CursorPosition           int
+	WindowStart              int
+	WindowEnd                int
+	ShowCursor               bool
+	TimeSinceLastInteraction time.Time
 }
+
 type Model struct {
 	Options Options
 }
 
 func (m *Model) CreateState(ctx context.Context) (s state.State, err error) {
-	return state.New(State{})
+	ctx, cancelFunc := context.WithCancel(ctx)
+	s, err = state.New(State{TimeSinceLastInteraction: time.Now()}, func(options *state.Options) {
+		options.CleanUpFunc = func(_ context.Context) error {
+			cancelFunc()
+			return nil
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		ticker := time.NewTicker(time.Millisecond * 500)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				val, _ := state.Current[State](s)
+				val.ShowCursor = !val.ShowCursor
+				_ = state.Update(s, val)
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+	return s, err
 }
 
 func (m *Model) Build(ctx context.Context, widgetContext widgetcontext.Context, widgetState state.State) (widget.Widget, error) {
@@ -60,19 +92,22 @@ func (m *Model) Build(ctx context.Context, widgetContext widgetcontext.Context, 
 		}
 		return focus.NewNode(func(ctx context.Context, hasFocus bool, hasPrimaryFocus bool) (widget.Widget, error) {
 			widgets := []widget.Widget{
-				text.New(GetSubstringInRange(placeholder, windowStart, windowEnd)),
-				text.New(GetSubstringInRange(userVal, windowStart, windowEnd)),
+				text.New(GetSubstringInRange(placeholder, windowStart, windowEnd), m.Options.PlaceholderStyle),
+				text.New(GetSubstringInRange(userVal, windowStart, windowEnd), m.Options.TextStyle),
 			}
-			if hasPrimaryFocus {
+
+			showCursor := val.ShowCursor
+			if val.TimeSinceLastInteraction.Add(time.Millisecond * 500).After(time.Now()) {
+				showCursor = true
+			}
+			if hasPrimaryFocus && (showCursor) {
 				blinkingCursor := GetOrDefault(userVal, cursorPosition, " ")
 				if placeholder != "" {
 					blinkingCursor = GetOrDefault(placeholder, cursorPosition, " ")
 				}
 				widgets = append(widgets, row.New([]widget.Widget{
 					text.New(GetSubstringInRange(cursorVal, windowStart, windowEnd)),
-					text.New(blinkingCursor, func(options *text.Options) {
-						options.BackgroundColor = "5"
-					}),
+					text.New(blinkingCursor, m.Options.CursorStyle),
 				}))
 			}
 			return stack.New(widgets), nil
@@ -165,6 +200,7 @@ func handleKeyEvent(widgetState state.State) func(ctx context.Context, msg tea.K
 		cursorPosition = min(cursorPosition, len(currentValue))
 		val.Value = currentValue
 		val.CursorPosition = cursorPosition
+		val.TimeSinceLastInteraction = time.Now()
 		return state.Update(widgetState, val)
 	}
 }
@@ -198,7 +234,16 @@ func GetSubstringInRange(s string, start, end int) string {
 }
 
 func New(options ...Option) widget.Widget {
-	m := &Model{}
+	m := &Model{Options: Options{
+		Placeholder: "Text field placeholder . . .",
+		PlaceholderStyle: func(options *text.Options) {
+			options.Faint = true
+		},
+		TextStyle: func(options *text.Options) {},
+		CursorStyle: func(options *text.Options) {
+			options.BackgroundColor = "3"
+		},
+	}}
 	for _, option := range options {
 		option(&m.Options)
 	}

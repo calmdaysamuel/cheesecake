@@ -29,7 +29,7 @@ func (m *Model) Element() widget.RenderElement {
 	}
 }
 
-func New(child widget.Widget, height, width int, options ...Option) *Model {
+func New(child widget.Widget) *Model {
 	m := &Model{
 		Width:               width,
 		Height:              height,
@@ -42,28 +42,4 @@ func New(child widget.Widget, height, width int, options ...Option) *Model {
 		option(m)
 	}
 	return m
-}
-
-func WithBackgroundColor(color lipgloss.Color) Option {
-	return func(model *Model) {
-		model.BgColor = color
-	}
-}
-
-func WithVerticalAlignment(position lipgloss.Position) Option {
-	return func(model *Model) {
-		model.VerticalAlignment = position
-	}
-}
-
-func WithHorizontalAlignment(position lipgloss.Position) Option {
-	return func(model *Model) {
-		model.HorizontalAlignment = position
-	}
-}
-
-func WithMouseActions(m *mouseactions.Manager) Option {
-	return func(model *Model) {
-		model.Manager = m
-	}
 }

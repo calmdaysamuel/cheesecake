@@ -1,9 +1,10 @@
 package padding
 
 import (
+	"context"
+
 	"github.com/calmdaysamuel/cheesecake/canvas"
 	"github.com/calmdaysamuel/cheesecake/constraints"
-	"github.com/calmdaysamuel/cheesecake/mouseactions"
 	"github.com/calmdaysamuel/cheesecake/size"
 	"github.com/calmdaysamuel/cheesecake/widget"
 )
@@ -12,11 +13,10 @@ var _ widget.RenderElement = &Element{}
 
 type Element struct {
 	size.Size
-	constraints.Constraints
-	parent       *Model
 	renderObject widget.RenderElement
 	ID           string
-	mouseactions.Manager
+	child        widget.Widget
+	options      Options
 }
 
 func (e *Element) Identifier() string {
@@ -33,61 +33,32 @@ func (e *Element) ClearChildren() {
 	e.renderObject = nil
 }
 
-func (e *Element) DirectDescendants() []widget.Widget {
-	if e.parent.Child == nil {
-		return nil
+func (e *Element) DirectDescendants(ctx context.Context) ([]widget.Widget, error) {
+	if e.child == nil {
+		return nil, nil
 	}
-	return []widget.Widget{e.parent.Child}
+	return []widget.Widget{e.child}, nil
 }
 
 func (e *Element) View() canvas.Canvas {
-	top, right, bottom, left, _ := GetPadding(e.parent.Padding...)
 	c := canvas.MergeCenter(e.renderObject.View())
-	c = canvas.AddLeft(c, left, canvas.DefaultCellWithBgColor(string(e.parent.BgColor)))
-	c = canvas.AddRight(c, right, canvas.DefaultCellWithBgColor(string(e.parent.BgColor)))
-	c = canvas.AddBottom(c, bottom, canvas.DefaultCellWithBgColor(string(e.parent.BgColor)))
-	c = canvas.AddTop(c, top, canvas.DefaultCellWithBgColor(string(e.parent.BgColor)))
+	c = canvas.AddLeft(c, e.options.LeftPadding, canvas.DefaultCellWithBgColor(string(e.options.BackgroundColor)))
+	c = canvas.AddRight(c, e.options.RightPadding, canvas.DefaultCellWithBgColor(string(e.options.BackgroundColor)))
+	c = canvas.AddBottom(c, e.options.BottomPadding, canvas.DefaultCellWithBgColor(string(e.options.BackgroundColor)))
+	c = canvas.AddTop(c, e.options.TopPadding, canvas.DefaultCellWithBgColor(string(e.options.BackgroundColor)))
 	return c
 }
 
-func (e *Element) SetConstraints(c constraints.Constraints) {
-	e.Constraints = c
-	top, right, bottom, left, _ := GetPadding(e.parent.Padding...)
+func (e *Element) SetConstraints(ctx context.Context, c constraints.Constraints) error {
+	top, right, bottom, left := e.options.TopPadding, e.options.RightPadding, e.options.BottomPadding, e.options.LeftPadding
 	childConstraints := constraints.Constraints{
-		MaxHeight: e.MaxHeight - top - bottom,
-		MaxWidth:  e.MaxWidth - right - left,
+		MaxHeight: c.MaxHeight - top - bottom,
+		MaxWidth:  c.MaxWidth - right - left,
 	}
-	e.renderObject.SetConstraints(childConstraints)
+	if err := e.renderObject.SetConstraints(ctx, childConstraints); err != nil {
+		return err
+	}
 	childSize := e.renderObject.GetSize()
 	e.Width, e.Height = childSize.Width+right+left, childSize.Height+top+bottom
-}
-
-func GetPadding(i ...int) (top, right, bottom, left int, ok bool) {
-	switch len(i) {
-	case 1:
-		top = i[0]
-		bottom = i[0]
-		left = i[0]
-		right = i[0]
-		ok = true
-	case 2: //nolint:mnd
-		top = i[0]
-		bottom = i[0]
-		left = i[1]
-		right = i[1]
-		ok = true
-	case 3: //nolint:mnd
-		top = i[0]
-		left = i[1]
-		right = i[1]
-		bottom = i[2]
-		ok = true
-	case 4: //nolint:mnd
-		top = i[0]
-		right = i[1]
-		bottom = i[2]
-		left = i[3]
-		ok = true
-	}
-	return top, right, bottom, left, ok
+	return nil
 }

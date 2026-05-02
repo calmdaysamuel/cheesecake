@@ -3,7 +3,22 @@ package constraints
 import (
 	"errors"
 	"fmt"
+	"github.com/calmdaysamuel/cheesecake/size"
+	"math"
 )
+
+type ViolatingConstraints = int
+
+const (
+	Vertically   = 1
+	Horizontally = 2
+	Both         = 3
+)
+
+var Max = Constraints{
+	MaxHeight: math.MaxInt,
+	MaxWidth:  math.MaxInt,
+}
 
 type Constraints struct {
 	MaxHeight int `json:"maxHeight"`
@@ -31,6 +46,19 @@ func (c Constraints) IsZero() bool {
 	}
 
 	return false
+}
+
+func (c Constraints) ViolatesConstraints(size size.Size) (isOverflowing bool, direction ViolatingConstraints) {
+	if size.Height > c.MaxHeight && size.Width > c.MaxWidth {
+		return true, Both
+	}
+	if size.Height > c.MaxHeight {
+		return true, Vertically
+	}
+	if size.Width > c.MaxWidth {
+		return true, Horizontally
+	}
+	return false, 0
 }
 func Tight(width, height int) Constraints {
 	return Constraints{

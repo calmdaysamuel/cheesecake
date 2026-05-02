@@ -1,9 +1,10 @@
 package border
 
 import (
+	"context"
+
 	"github.com/calmdaysamuel/cheesecake/canvas"
 	"github.com/calmdaysamuel/cheesecake/constraints"
-	"github.com/calmdaysamuel/cheesecake/mouseactions"
 	"github.com/calmdaysamuel/cheesecake/size"
 	"github.com/calmdaysamuel/cheesecake/widget"
 	"github.com/charmbracelet/lipgloss"
@@ -14,10 +15,10 @@ var _ widget.RenderElement = &Element{}
 type Element struct {
 	size.Size
 	constraints.Constraints
-	parent       *Model
 	renderObject widget.RenderElement
 	ID           string
-	*mouseactions.Manager
+	child        widget.Widget
+	options      Options
 }
 
 func (e *Element) Identifier() string {
@@ -34,15 +35,15 @@ func (e *Element) ClearChildren() {
 	e.renderObject = nil
 }
 
-func (e *Element) DirectDescendants() []widget.Widget {
-	if e.parent.Child == nil {
-		return nil
+func (e *Element) DirectDescendants(ctx context.Context) ([]widget.Widget, error) {
+	if e.child == nil {
+		return nil, nil
 	}
-	return []widget.Widget{e.parent.Child}
+	return []widget.Widget{e.child}, nil
 }
 
 func (e *Element) View() canvas.Canvas {
-	top, right, bottom, left, _ := GetBorders(e.parent.Sides...)
+	top, right, bottom, left := e.options.EnableTopBorder, e.options.EnableRightBorder, e.options.EnableBottomBorder, e.options.EnableLeftBorder
 	c := canvas.New(e.Width, e.Height)
 	if len(c) == 0 || len(c[0]) == 0 {
 		return c
@@ -50,29 +51,14 @@ func (e *Element) View() canvas.Canvas {
 	if top {
 		for i := range c[0] {
 			cell := canvas.Cell{
-				Runes:           []rune(e.parent.Border.Top),
-				Italic:          e.parent.Style.GetItalic(),
-				Faint:           e.parent.Style.GetFaint(),
-				Bold:            e.parent.Style.GetBold(),
-				Underline:       e.parent.Style.GetUnderline(),
-				UnderlineSpaces: e.parent.Style.GetUnderlineSpaces(),
-			}
-			if color, ok := e.parent.Style.GetForeground().(lipgloss.Color); ok {
-				cell.FgColor = color
-			}
-			if color, ok := e.parent.Style.GetBackground().(lipgloss.Color); ok {
-				cell.BgColor = color
-			}
-			if i > 2 && i <= 2+len(e.parent.Label) {
-				cell.Runes = []rune{rune(e.parent.Label[i-3])}
+				Runes:   []rune(e.options.BorderStyle.Top),
+				FgColor: e.options.BorderColor,
+				BgColor: e.options.BackgroundColor,
 			}
 			if i == 0 {
-				cell.Runes = []rune(e.parent.Border.TopLeft)
+				cell.Runes = []rune(e.options.BorderStyle.TopLeft)
 			} else if i == len(c[0])-1 {
-				cell.Runes = []rune(e.parent.Border.TopRight)
-			}
-			if (!left && i == 0) || (!right && i == len(c[0])-1) {
-				cell.Runes = []rune(e.parent.Border.Top)
+				cell.Runes = []rune(e.options.BorderStyle.TopRight)
 			}
 			c[0][i] = cell
 		}
@@ -81,26 +67,14 @@ func (e *Element) View() canvas.Canvas {
 	if bottom {
 		for i := range c[len(c)-1] {
 			cell := canvas.Cell{
-				Runes:           []rune(e.parent.Border.Bottom),
-				Italic:          e.parent.Style.GetItalic(),
-				Faint:           e.parent.Style.GetFaint(),
-				Bold:            e.parent.Style.GetBold(),
-				Underline:       e.parent.Style.GetUnderline(),
-				UnderlineSpaces: e.parent.Style.GetUnderlineSpaces(),
-			}
-			if color, ok := e.parent.Style.GetForeground().(lipgloss.Color); ok {
-				cell.FgColor = color
-			}
-			if color, ok := e.parent.Style.GetBackground().(lipgloss.Color); ok {
-				cell.BgColor = color
+				Runes:   []rune(e.options.BorderStyle.Bottom),
+				FgColor: e.options.BorderColor,
+				BgColor: e.options.BackgroundColor,
 			}
 			if i == 0 {
-				cell.Runes = []rune(e.parent.Border.BottomLeft)
-			} else if i == len(c[len(c)-1])-1 {
-				cell.Runes = []rune(e.parent.Border.BottomRight)
-			}
-			if (!left && i == 0) || (!right && i == len(c[len(c)-1])-1) {
-				cell.Runes = []rune(e.parent.Border.Bottom)
+				cell.Runes = []rune(e.options.BorderStyle.BottomLeft)
+			} else if i == len(c[0])-1 {
+				cell.Runes = []rune(e.options.BorderStyle.BottomRight)
 			}
 			c[len(c)-1][i] = cell
 		}
@@ -109,18 +83,9 @@ func (e *Element) View() canvas.Canvas {
 	if left {
 		for i := 1; i < len(c)-1; i++ {
 			cell := canvas.Cell{
-				Runes:           []rune(e.parent.Border.Left),
-				Italic:          e.parent.Style.GetItalic(),
-				Faint:           e.parent.Style.GetFaint(),
-				Bold:            e.parent.Style.GetBold(),
-				Underline:       e.parent.Style.GetUnderline(),
-				UnderlineSpaces: e.parent.Style.GetUnderlineSpaces(),
-			}
-			if color, ok := e.parent.Style.GetForeground().(lipgloss.Color); ok {
-				cell.FgColor = color
-			}
-			if color, ok := e.parent.Style.GetBackground().(lipgloss.Color); ok {
-				cell.BgColor = color
+				Runes:   []rune(e.options.BorderStyle.Left),
+				FgColor: e.options.BorderColor,
+				BgColor: e.options.BackgroundColor,
 			}
 			c[i][0] = cell
 		}
@@ -129,18 +94,9 @@ func (e *Element) View() canvas.Canvas {
 	if right {
 		for i := 1; i < len(c)-1; i++ {
 			cell := canvas.Cell{
-				Runes:           []rune(e.parent.Border.Right),
-				Italic:          e.parent.Style.GetItalic(),
-				Faint:           e.parent.Style.GetFaint(),
-				Bold:            e.parent.Style.GetBold(),
-				Underline:       e.parent.Style.GetUnderline(),
-				UnderlineSpaces: e.parent.Style.GetUnderlineSpaces(),
-			}
-			if color, ok := e.parent.Style.GetForeground().(lipgloss.Color); ok {
-				cell.FgColor = color
-			}
-			if color, ok := e.parent.Style.GetBackground().(lipgloss.Color); ok {
-				cell.BgColor = color
+				Runes:   []rune(e.options.BorderStyle.Right),
+				FgColor: e.options.BorderColor,
+				BgColor: e.options.BackgroundColor,
 			}
 			c[i][len(c[i])-1] = cell
 		}
@@ -148,73 +104,44 @@ func (e *Element) View() canvas.Canvas {
 	return canvas.MergeCenter(c, e.renderObject.View())
 }
 
-func (e *Element) SetConstraints(c constraints.Constraints) {
-	e.Constraints = c
+func (e *Element) SetConstraints(ctx context.Context, c constraints.Constraints) error {
 	childConstraints := constraints.Constraints{
-		MaxHeight: e.MaxHeight,
-		MaxWidth:  e.MaxWidth,
+		MaxHeight: c.MaxHeight,
+		MaxWidth:  c.MaxWidth,
 	}
-	top, right, bottom, left, _ := GetBorders(e.parent.Sides...)
+	top, right, bottom, left := e.options.EnableTopBorder, e.options.EnableRightBorder, e.options.EnableBottomBorder, e.options.EnableLeftBorder
 	if top {
-		childConstraints.MaxHeight -= 1
+		childConstraints.MaxHeight -= len(e.options.BorderStyle.Top)
 	}
 	if bottom {
-		childConstraints.MaxHeight -= 1
+		childConstraints.MaxHeight -= len(e.options.BorderStyle.Bottom)
 	}
 
 	if right {
-		childConstraints.MaxWidth -= 1
+		childConstraints.MaxWidth -= len(e.options.BorderStyle.Right)
 	}
 	if left {
-		childConstraints.MaxWidth -= 1
+		childConstraints.MaxWidth -= len(e.options.BorderStyle.Left)
 	}
-	e.renderObject.SetConstraints(childConstraints)
+	if err := e.renderObject.SetConstraints(ctx, childConstraints); err != nil {
+		return err
+	}
+
 	childSize := e.renderObject.GetSize()
 	e.Width, e.Height = childSize.Width, childSize.Height
 
 	if top {
-		e.Height += 1
+		e.Height += lipgloss.Height(e.options.BorderStyle.Top)
 	}
 	if bottom {
-		e.Height += 1
+		e.Height += lipgloss.Height(e.options.BorderStyle.Bottom)
 	}
 
 	if right {
-		e.Width += 1
+		e.Width += lipgloss.Width(e.options.BorderStyle.Right)
 	}
 	if left {
-		e.Width += 1
+		e.Width += lipgloss.Width(e.options.BorderStyle.Left)
 	}
-	e.Width = max(e.Width, 0)
-	e.Height = max(e.Height, 0)
-}
-
-func GetBorders(i ...bool) (top, right, bottom, left bool, ok bool) {
-	switch len(i) {
-	case 1:
-		top = i[0]
-		bottom = i[0]
-		left = i[0]
-		right = i[0]
-		ok = true
-	case 2: //nolint:mnd
-		top = i[0]
-		bottom = i[0]
-		left = i[1]
-		right = i[1]
-		ok = true
-	case 3: //nolint:mnd
-		top = i[0]
-		left = i[1]
-		right = i[1]
-		bottom = i[2]
-		ok = true
-	case 4: //nolint:mnd
-		top = i[0]
-		right = i[1]
-		bottom = i[2]
-		left = i[3]
-		ok = true
-	}
-	return top, right, bottom, left, ok
+	return nil
 }

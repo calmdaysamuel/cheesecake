@@ -13,7 +13,5 @@ type RenderElement interface {
 	AdoptChild(child RenderElement)
 	ClearChildren()
 	DirectDescendants(ctx context.Context) ([]Widget, error)
-	View() canvas.Canvas
-	SetConstraints(ctx context.Context, box constraints.Constraints) error
-	GetSize() size.Size
+	View(ctx context.Context, box constraints.Constraints) (canvas.Canvas, size.Size, error)
 }

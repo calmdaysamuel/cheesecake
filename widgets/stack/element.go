@@ -5,24 +5,21 @@ import (
 
 	"github.com/calmdaysamuel/cheesecake/canvas"
 	"github.com/calmdaysamuel/cheesecake/constraints"
-	"github.com/calmdaysamuel/cheesecake/mouseactions"
 	"github.com/calmdaysamuel/cheesecake/size"
 	"github.com/calmdaysamuel/cheesecake/widget"
+	"github.com/charmbracelet/lipgloss"
 )
 
 var _ widget.RenderElement = &Element{}
 
 type Element struct {
-	parentWidget         *Model
+	ID       string
+	Options  Options
+	Children []widget.Widget
+
 	renderObjectChildren []widget.RenderElement
 	constraints.Constraints
 	size.Size
-	ID string
-	*mouseactions.Manager
-}
-
-func (e *Element) Widget() widget.Widget {
-	return e.parentWidget
 }
 
 func (e *Element) Dispose() {
@@ -41,15 +38,15 @@ func (e *Element) ClearChildren() {
 }
 
 func (e *Element) DirectDescendants(ctx context.Context) ([]widget.Widget, error) {
-	return e.parentWidget.Children, nil
+	return e.Children, nil
 }
 
 func (e *Element) View() canvas.Canvas {
-	childrenViews := []canvas.Canvas{canvas.NewWithCell(e.Width, e.Height, canvas.DefaultCellWithBgColor(string(e.parentWidget.BgColor)))}
+	childrenViews := []canvas.Canvas{canvas.NewWithCell(e.Width, e.Height, canvas.DefaultCellWithBgColor(string(e.Options.BackgroundColor)))}
 	for _, child := range e.renderObjectChildren {
 		childrenViews = append(childrenViews, child.View())
 	}
-	return canvas.AddMouseActionManager(canvas.MergeWithMouseManager(e.parentWidget.VerticalAlignment, e.parentWidget.HorizontalAlignment, false, childrenViews...), e.Manager)
+	return canvas.MergeWithMouseManager(lipgloss.Position(e.Options.MainAxisAlignment), lipgloss.Position(e.Options.CrossAxisAlignment), false, childrenViews...)
 }
 
 func (e *Element) SetConstraints(ctx context.Context, constraints constraints.Constraints) error {

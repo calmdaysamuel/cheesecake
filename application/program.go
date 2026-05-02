@@ -11,8 +11,8 @@ import (
 	"github.com/calmdaysamuel/cheesecake/mouseactions"
 	"github.com/calmdaysamuel/cheesecake/tree"
 	"github.com/calmdaysamuel/cheesecake/widget"
+	"github.com/calmdaysamuel/cheesecake/widgets/mouseregion"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	werror "github.com/palantir/witchcraft-go-error"
 	wparams "github.com/palantir/witchcraft-go-params"
 )
@@ -28,16 +28,17 @@ type RerenderMsg struct {
 var _ tea.Model = &Program{}
 
 type Program struct {
-	Root             widget.Widget
-	Tree             *tree.Node
-	FrameRate        int64
-	Ctx              context.Context
-	rootRenderObject widget.RenderElement
-	constraints      tea.WindowSizeMsg
-	oldMouseManagers []*mouseactions.Manager
-	FocusChain       []*tree.FocusNode
-	FocusedNode      *tree.FocusNode
-	LastError        error
+	Root              widget.Widget
+	Tree              *tree.Node
+	FrameRate         int64
+	Ctx               context.Context
+	rootRenderObject  widget.RenderElement
+	constraints       tea.WindowSizeMsg
+	oldMouseManagers  []*mouseactions.Manager
+	FocusChain        []*tree.FocusNode
+	FocusedNode       *tree.FocusNode
+	LastError         error
+	ActiveMouseRegion map[string]canvas.CellRelativePosition
 }
 
 func (p *Program) Init() tea.Cmd {
@@ -51,6 +52,8 @@ func (p *Program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case RerenderMsg:
 	case tea.WindowSizeMsg:
 		p.constraints = msg
+		_, _ = p.FrameStep()
+		return p, nil
 	case tea.KeyMsg:
 		if msg.String() == "tab" {
 			p.FocusedNode, p.LastError = tree.FocusTreeStep(ctx, p.FocusChain, p.FocusedNode, false, tree.FocusMoveForward)
@@ -71,7 +74,7 @@ func (p *Program) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 	case tea.MouseMsg:
-		//p.HandleMouseEvent(msg)
+		_ = p.HandleMouseEvent(ctx, msg)
 	}
 	return p, nil
 }
@@ -89,7 +92,7 @@ func (p *Program) FrameStep() (shouldRerender bool, err error) {
 	if err := p.HandleFocus(ctx); err != nil {
 		return shouldRerender, err
 	}
-	return shouldRerender, p.rootRenderObject.SetConstraints(ctx, constraints.Tight(p.constraints.Width, p.constraints.Height))
+	return shouldRerender, nil
 }
 
 func (p *Program) HandleFocus(ctx context.Context) error {
@@ -104,57 +107,79 @@ func (p *Program) HandleFocus(ctx context.Context) error {
 }
 
 func (p *Program) View() string {
-	if p.rootRenderObject == nil {
-		return lipgloss.NewStyle().
-			BorderStyle(lipgloss.NormalBorder()).
-			Render("application is running but there is nothing to render")
-	}
-	return canvas.MergeTopLeft(canvas.New(p.constraints.Width, p.constraints.Height), p.rootRenderObject.View()).View()
+	c, _ := p.CurrentAppCanvas(p.Ctx)
+	return c.View()
 }
 
-func (p *Program) HandleMouseEvent(msg tea.MouseMsg) {
-	if p.rootRenderObject != nil {
-		var c = p.rootRenderObject.View()
-		row, column := msg.X, msg.Y
-		if column >= len(c) || row >= len(c[0]) {
-			for _, manager := range p.oldMouseManagers {
-				manager.Reset()
-			}
-			p.oldMouseManagers = nil
-			return
-		}
+func (p *Program) HandleMouseEvent(ctx context.Context, msg tea.MouseMsg) error {
+	c, err := p.CurrentAppCanvas(ctx)
+	if err != nil {
+		return err
+	}
+	row, column := msg.X, msg.Y
+	if column >= len(c) || row >= len(c[0]) || column < 0 || row < 0 {
+		return nil
+	}
 
-		cell := c[column][row]
-		currentActionManagers := make([]*mouseactions.Manager, 0)
-		for _, manager := range cell.ActionManagers {
-			if manager == nil {
+	if err := p.handleMouseHovering(ctx, c, column, row); err != nil {
+		return err
+	}
+	switch msg.Action {
+	case tea.MouseActionPress:
+		p.ActiveMouseRegion = c[column][row].RelativePositioning
+		if err := mouseregion.HandleKeyDown(ctx, p.ActiveMouseRegion, msg); err != nil {
+			return err
+		}
+	case tea.MouseActionRelease:
+		if err := mouseregion.HandleKeyUp(ctx, c[column][row].RelativePositioning, msg); err != nil {
+			return err
+		}
+		p.ActiveMouseRegion = nil
+	}
+	return nil
+}
+
+func (p *Program) CurrentAppCanvas(ctx context.Context) (canvas.Canvas, error) {
+	if p.rootRenderObject == nil {
+		return canvas.MergeTopLeft(canvas.New(p.constraints.Width, p.constraints.Height)), nil
+	}
+	c, _, err := p.rootRenderObject.View(ctx, constraints.Constraints{
+		MaxHeight: p.constraints.Height,
+		MaxWidth:  p.constraints.Width,
+	})
+	if err != nil {
+		return canvas.Canvas{}, err
+	}
+	return canvas.MergeTopLeft(canvas.New(p.constraints.Width, p.constraints.Height), c), nil
+}
+
+func (p *Program) handleMouseHovering(ctx context.Context, c canvas.Canvas, column int, row int) error {
+	// Mark the current cell as hovering
+	hoverstates := make([]string, 0)
+	for s := range c[column][row].RelativePositioning {
+		hoverstates = append(hoverstates, s)
+	}
+	if err := mouseregion.HandleMouseHoverState(ctx, c[column][row].RelativePositioning, true); err != nil {
+		return err
+	}
+	// Only the cell being hovered on can be in a hover state
+	for i := range c {
+		for j, cell := range c[i] {
+			if i == column && j == row {
 				continue
 			}
-			currentActionManagers = append(currentActionManagers, manager)
-		}
-
-		for _, manager := range p.oldMouseManagers {
-			if slices.Contains(currentActionManagers, manager) {
-				continue
+			notHovering := make(map[string]canvas.CellRelativePosition)
+			for s, position := range cell.RelativePositioning {
+				if !slices.Contains(hoverstates, s) {
+					notHovering[s] = position
+				}
 			}
-			manager.Reset()
-		}
-		p.oldMouseManagers = currentActionManagers
-		for _, manager := range currentActionManagers {
-			manager.OnHoverStateChange(true)
-		}
-		switch msg.Action {
-		case tea.MouseActionPress:
-			for _, manager := range currentActionManagers {
-				manager.OnMouseDown(msg.Button)
-			}
-		case tea.MouseActionRelease:
-			for _, manager := range currentActionManagers {
-				manager.OnMouseUp(msg.Button)
+			if err := mouseregion.HandleMouseHoverState(ctx, notHovering, false); err != nil {
+				return err
 			}
 		}
 	}
-
+	return nil
 }
 
 func NewProgram(ctx context.Context, root widget.Widget) (*Program, error) {

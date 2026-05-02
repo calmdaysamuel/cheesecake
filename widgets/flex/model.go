@@ -1,10 +1,6 @@
-package column
+package flex
 
 import (
-	"github.com/calmdaysamuel/cheesecake/canvas"
-	"github.com/calmdaysamuel/cheesecake/constraints"
-	"github.com/calmdaysamuel/cheesecake/size"
-	"github.com/calmdaysamuel/cheesecake/widgets/flex"
 	"slices"
 	"strings"
 
@@ -24,51 +20,31 @@ type Options struct {
 	BackgroundColor    lipgloss.Color
 	ReverseChildren    bool
 }
-
 type Model struct {
-	children          []widget.Widget
-	mainAxisAlignment lipgloss.Position
-	Options           flex.Options
+	Options  Options
+	children []widget.Widget
 }
 
 func (m *Model) Element() widget.RenderElement {
-	return &flex.Element{
+	return &Element{
 		Children: m.children,
 		ID:       random.ID(),
 		Options:  m.Options,
-		FlexProvider: func(f widget.Flexible) int {
-			_, val := f.Flex()
-			return val
-		},
-		SizeProvider: func(size size.Size) int {
-			return size.Height
-		},
-		ConstraintsProvider: func(box constraints.Constraints) int {
-			return box.MaxHeight
-		},
-		ChildJoiner: func(canvases ...canvas.Canvas) canvas.Canvas {
-			return canvas.JoinVertical(
-				lipgloss.Position(
-					m.Options.CrossAxisAlignment,
-				),
-				canvases...,
-			)
-		},
 	}
 }
 
-func New(children []widget.Widget, options ...flex.Option) *Model {
+func New(children []widget.Widget, options ...Option) *Model {
 	m := &Model{}
 	for _, option := range options {
 		option(&m.Options)
 	}
 	withSpacing := make([]widget.Widget, 0)
 
-	// Add spacing for column
+	// Add spacing for row
 	for i, child := range children {
 		withSpacing = append(withSpacing, child)
 		if i < len(children)-1 {
-			withSpacing = append(withSpacing, text.New(strings.Repeat("\n", m.Options.Spacing)))
+			withSpacing = append(withSpacing, text.New(strings.Repeat(" ", m.Options.Spacing)))
 		}
 	}
 	if m.Options.ReverseChildren {

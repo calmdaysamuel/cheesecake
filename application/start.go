@@ -12,7 +12,23 @@ import (
 	"github.com/palantir/witchcraft-go-logging/wlog/svclog/svc1log"
 )
 
-func Start(ctx context.Context, w widget.Widget) error {
+type StartOptionsFunc func(options *StartOptions)
+type StartOptions struct {
+	Context           context.Context
+	LogFile           string
+	LogLevel          wlog.LogLevel
+	EnableMouseMotion bool
+	FrameRate         int
+	ApplicationName   string
+}
+
+func Start(w widget.Widget, options ...StartOptionsFunc) error {
+	opts := defaultStartOptions()
+	for _, option := range options {
+		option(opts)
+	}
+	ctx := opts.Context
+
 	wlog.SetDefaultLoggerProvider(wlogzap.LoggerProvider())
 
 	logFile := "logs/" + time.Now().Format(time.DateOnly)
@@ -50,21 +66,31 @@ func Start(ctx context.Context, w widget.Widget) error {
 	return nil
 }
 
+func defaultStartOptions() *StartOptions {
+	return &StartOptions{
+		Context:           context.Background(),
+		LogFile:           "logs/" + time.Now().Format(time.DateOnly) + ".log",
+		LogLevel:          wlog.InfoLevel,
+		EnableMouseMotion: true,
+		FrameRate:         60,
+		ApplicationName:   "Cheese Application",
+	}
+}
+
 func runApplication(ctx context.Context, teaProgram *tea.Program, program *Program) error {
-	ticker := time.NewTicker(time.Second / 60)
-	defer ticker.Stop()
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case t := <-ticker.C:
+		default:
 			shouldRerender, err := program.FrameStep()
 			if err != nil {
 				return err
 			}
 			if shouldRerender {
-				teaProgram.Send(RerenderMsg{TickTime: t})
+				teaProgram.Send(RerenderMsg{TickTime: time.Now()})
 			}
+			time.Sleep(time.Second / 60)
 		}
 	}
 }

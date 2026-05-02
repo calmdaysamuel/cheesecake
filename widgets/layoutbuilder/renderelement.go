@@ -48,7 +48,7 @@ func (e *Element) View() canvas.Canvas {
 func (e *Element) SetConstraints(ctx context.Context, c constraints.Constraints) error {
 	_ = e.ConstraintsListener(c)
 	if err := e.renderChild.SetConstraints(ctx, c); err != nil {
-		return werror.WrapWithContextParams(ctx, err, "child in layoutbuilder element fail to set constraint")
+		return werror.WrapWithContextParams(ctx, err, "child in layout-builder element fail to set constraint")
 	}
 	e.Size = e.renderChild.GetSize()
 	return nil
